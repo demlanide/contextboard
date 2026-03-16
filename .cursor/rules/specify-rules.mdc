@@ -48,6 +48,7 @@ TypeScript: Follow standard conventions
 
 ## Recent Changes
 
+- 003-revision-operations: Refactored operation factory, added per-board advisory locks, withBoardMutation wrapper, narrowed operation_type enum
 - 002-board-state-hydration: Added board-state controller, service, and node/edge table migrations (read-only hydration endpoint)
 - 001-board-foundation: Added TypeScript (Node.js LTS) + Express (HTTP), Zod (schema validation), node-postgres (pg) for database access
 

@@ -422,3 +422,94 @@ describe('DELETE /api/boards/:boardId (T006)', () => {
     expect(res.status).toBe(200);
   });
 });
+
+// ─── S3: Operation type invariants (T018) ─────────────────────────────────────
+
+describe('S3 operation type invariants (T018)', () => {
+  it('POST /api/boards — revision=0 and no operation rows', async () => {
+    const res = await request
+      .post('/api/boards')
+      .set('Content-Type', 'application/json')
+      .send({ title: 'No Op Board' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.board.revision).toBe(0);
+
+    const boardId = res.body.data.board.id;
+    const { rows } = await pool.query(
+      'SELECT * FROM board_operations WHERE board_id = $1',
+      [boardId]
+    );
+    expect(rows).toHaveLength(0);
+  });
+
+  it('PATCH metadata — operation_type is update_board (not archive_board)', async () => {
+    const create = await request
+      .post('/api/boards')
+      .set('Content-Type', 'application/json')
+      .send({ title: 'Metadata Op' });
+
+    const boardId = create.body.data.board.id;
+
+    const res = await request
+      .patch(`/api/boards/${boardId}`)
+      .set('Content-Type', 'application/merge-patch+json')
+      .send({ title: 'Patched' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.board.revision).toBe(1);
+
+    const { rows } = await pool.query(
+      'SELECT * FROM board_operations WHERE board_id = $1',
+      [boardId]
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].operation_type).toBe('update_board');
+  });
+
+  it('PATCH status archive — operation_type is update_board (not archive_board)', async () => {
+    const create = await request
+      .post('/api/boards')
+      .set('Content-Type', 'application/json')
+      .send({ title: 'Archive Op' });
+
+    const boardId = create.body.data.board.id;
+
+    const res = await request
+      .patch(`/api/boards/${boardId}`)
+      .set('Content-Type', 'application/merge-patch+json')
+      .send({ status: 'archived' });
+
+    expect(res.status).toBe(200);
+
+    const { rows } = await pool.query(
+      'SELECT * FROM board_operations WHERE board_id = $1',
+      [boardId]
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].operation_type).toBe('update_board');
+    expect(rows[0].payload.before).toEqual({ status: 'active' });
+    expect(rows[0].payload.after).toEqual({ status: 'archived' });
+  });
+
+  it('DELETE — operation_type is update_board (not delete_board)', async () => {
+    const create = await request
+      .post('/api/boards')
+      .set('Content-Type', 'application/json')
+      .send({ title: 'Delete Op' });
+
+    const boardId = create.body.data.board.id;
+
+    const res = await request.delete(`/api/boards/${boardId}`);
+    expect(res.status).toBe(200);
+
+    const { rows } = await pool.query(
+      'SELECT * FROM board_operations WHERE board_id = $1',
+      [boardId]
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].operation_type).toBe('update_board');
+    expect(rows[0].payload.before).toEqual({ status: 'active' });
+    expect(rows[0].payload.after).toEqual({ status: 'deleted' });
+  });
+});

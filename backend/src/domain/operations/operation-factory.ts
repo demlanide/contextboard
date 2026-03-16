@@ -1,13 +1,87 @@
 import { v4 as uuidv4 } from 'uuid';
 
 export type OperationType =
-  | 'create_board'
   | 'update_board'
-  | 'delete_board'
-  | 'archive_board';
+  | 'create_node'
+  | 'update_node'
+  | 'delete_node'
+  | 'restore_node'
+  | 'create_edge'
+  | 'update_edge'
+  | 'delete_edge'
+  | 'create_asset'
+  | 'apply_agent_action_batch'
+  | 'create_snapshot';
 
 export type TargetType = 'board' | 'node' | 'edge' | 'asset' | 'chat' | 'layout' | 'snapshot';
 export type ActorType = 'user' | 'agent' | 'system';
+
+// ─── Payload Interfaces ───────────────────────────────────────────────────────
+
+export interface UpdateBoardPayload {
+  changes: Record<string, unknown>;
+  previous: Record<string, unknown>;
+}
+
+export interface UpdateBoardStatusPayload {
+  before: { status: string };
+  after: { status: string };
+}
+
+export interface CreateNodePayload {
+  node: {
+    id: string;
+    type: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    content: Record<string, unknown>;
+    style: Record<string, unknown>;
+  };
+}
+
+export interface UpdateNodePayload {
+  changes: Record<string, unknown>;
+  previous: Record<string, unknown>;
+}
+
+export interface DeleteNodePayload {
+  nodeId: string;
+  previousState: {
+    type: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    content: Record<string, unknown>;
+  };
+}
+
+export interface CreateEdgePayload {
+  edge: {
+    id: string;
+    sourceNodeId: string;
+    targetNodeId: string;
+    label: string | null;
+  };
+}
+
+export interface UpdateEdgePayload {
+  changes: Record<string, unknown>;
+  previous: Record<string, unknown>;
+}
+
+export interface DeleteEdgePayload {
+  edgeId: string;
+  previousState: {
+    sourceNodeId: string;
+    targetNodeId: string;
+    label: string | null;
+  };
+}
+
+// ─── OperationEntry ───────────────────────────────────────────────────────────
 
 export interface OperationEntry {
   id: string;
@@ -22,28 +96,36 @@ export interface OperationEntry {
   inverse_payload: Record<string, unknown> | null;
 }
 
-export function createBoardOperation(
-  boardId: string,
-  revision: number,
-  payload: { title: string; description: string | null; chatThreadId: string }
-): OperationEntry {
+// ─── Generalized Factory ──────────────────────────────────────────────────────
+
+export interface BuildOperationParams {
+  boardId: string;
+  boardRevision: number;
+  actorType: ActorType;
+  operationType: OperationType;
+  targetType: TargetType;
+  targetId?: string | null;
+  batchId?: string | null;
+  payload: Record<string, unknown>;
+  inversePayload?: Record<string, unknown> | null;
+}
+
+export function buildOperation(params: BuildOperationParams): OperationEntry {
   return {
     id: uuidv4(),
-    board_id: boardId,
-    board_revision: revision,
-    actor_type: 'user',
-    operation_type: 'create_board',
-    target_type: 'board',
-    target_id: boardId,
-    batch_id: null,
-    payload: {
-      title: payload.title,
-      description: payload.description,
-      chatThreadId: payload.chatThreadId,
-    },
-    inverse_payload: null,
+    board_id: params.boardId,
+    board_revision: params.boardRevision,
+    actor_type: params.actorType,
+    operation_type: params.operationType,
+    target_type: params.targetType,
+    target_id: params.targetId ?? null,
+    batch_id: params.batchId ?? null,
+    payload: params.payload,
+    inverse_payload: params.inversePayload ?? null,
   };
 }
+
+// ─── Convenience Wrapper (backward-compat with S1) ───────────────────────────
 
 export function updateBoardOperation(
   boardId: string,
@@ -51,54 +133,13 @@ export function updateBoardOperation(
   changes: Record<string, unknown>,
   previous: Record<string, unknown>
 ): OperationEntry {
-  return {
-    id: uuidv4(),
-    board_id: boardId,
-    board_revision: newRevision,
-    actor_type: 'user',
-    operation_type: 'update_board',
-    target_type: 'board',
-    target_id: boardId,
-    batch_id: null,
+  return buildOperation({
+    boardId,
+    boardRevision: newRevision,
+    actorType: 'user',
+    operationType: 'update_board',
+    targetType: 'board',
+    targetId: boardId,
     payload: { changes, previous },
-    inverse_payload: null,
-  };
-}
-
-export function archiveBoardOperation(
-  boardId: string,
-  newRevision: number,
-  previousStatus: string
-): OperationEntry {
-  return {
-    id: uuidv4(),
-    board_id: boardId,
-    board_revision: newRevision,
-    actor_type: 'user',
-    operation_type: 'archive_board',
-    target_type: 'board',
-    target_id: boardId,
-    batch_id: null,
-    payload: { previousStatus },
-    inverse_payload: null,
-  };
-}
-
-export function deleteBoardOperation(
-  boardId: string,
-  currentRevision: number,
-  previousStatus: string
-): OperationEntry {
-  return {
-    id: uuidv4(),
-    board_id: boardId,
-    board_revision: currentRevision,
-    actor_type: 'user',
-    operation_type: 'delete_board',
-    target_type: 'board',
-    target_id: boardId,
-    batch_id: null,
-    payload: { previousStatus },
-    inverse_payload: null,
-  };
+  });
 }
