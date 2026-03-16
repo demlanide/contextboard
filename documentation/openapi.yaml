@@ -1074,7 +1074,7 @@ components:
 
     ChatThread:
       type: object
-      required: [id, boardId]
+      required: [id, boardId, metadata, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -1082,6 +1082,15 @@ components:
         boardId:
           type: string
           format: uuid
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     ChatMessage:
       type: object
@@ -1193,6 +1202,11 @@ components:
           $ref: '#/components/schemas/BoardSettings'
         summary:
           $ref: '#/components/schemas/BoardSummary'
+        status:
+          type: string
+          description: >
+            Status transition via PATCH. Only 'archived' is accepted
+            (active → archived). All other transitions return 422.
 
     CreateNodeRequest:
       type: object

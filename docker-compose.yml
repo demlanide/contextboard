@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: contextboard
+      POSTGRES_PASSWORD: contextboard
+      POSTGRES_DB: contextboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contextboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://contextboard:contextboard@db:5432/contextboard
+      DB_POOL_MAX: 10
+      DB_STATEMENT_TIMEOUT_MS: 3000
+      DB_POOL_TIMEOUT_MS: 2000
+      REQUEST_TIMEOUT_READ_MS: 2000
+      REQUEST_TIMEOUT_MUTATION_MS: 5000
+      IDEMPOTENCY_TTL_HOURS: 24
+      LOG_LEVEL: info
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

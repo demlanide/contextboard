@@ -1,0 +1,23 @@
+# Node
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.tmp
+
+# Test
+coverage/
+
+# Docker
+postgres_data/

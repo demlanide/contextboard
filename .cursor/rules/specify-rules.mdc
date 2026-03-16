@@ -1,0 +1,54 @@
+---
+description: Project Development Guidelines
+globs: ["**/*"]
+alwaysApply: true
+---
+# contextboard Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2026-03-16
+
+## Active Technologies
+
+- TypeScript (Node.js LTS) + Express (HTTP), Zod (schema validation), node-postgres (pg) for database access (001-board-foundation)
+- PostgreSQL 15+ (001-board-foundation)
+
+## Project Structure
+
+```text
+backend/
+  src/
+    main/
+    config/
+    http/
+      controllers/
+      middleware/
+    schemas/
+    services/
+    domain/
+      validation/
+      revision/
+      operations/
+    repos/
+    db/
+      migrations/
+    obs/
+  tests/
+    contract/
+    integration/
+    unit/
+```
+
+## Commands
+
+npm test; npm run lint
+
+## Code Style
+
+TypeScript: Follow standard conventions
+
+## Recent Changes
+
+- 001-board-foundation: Added TypeScript (Node.js LTS) + Express (HTTP), Zod (schema validation), node-postgres (pg) for database access
+
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->

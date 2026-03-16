@@ -20,25 +20,13 @@ Use these documents as the source of truth:
 - `documentation/validation-rules.md`
 - `documentation/non-functional-requirements.md`
 - `documentation/architecture.md`
+- `documentation/frontend-state-sync.md`
 - `documentation/ui-flows.md`
 - `documentation/agent-context.md`
 - `documentation/examples.md`
 - `documentation/test-matrix.md`
 - `documentation/roadmap.md`
 - `documentation/task-template.md`
-
----
-
-## Ignore for now
-
-Do not treat these as canonical input to Spec Kit:
-
-- `documentation/architecture copy.md`
-  - duplicate of `architecture.md`
-- `documentation/task-template copy.md`
-  - this is not a task template
-  - it appears to be a separate frontend state sync document under the wrong filename
-  - exclude it from prompts until it is renamed and reviewed as its own source document
 
 ---
 
@@ -116,10 +104,7 @@ Use these documents as primary input:
 - documentation/agent-context.md
 - documentation/roadmap.md
 - documentation/test-matrix.md
-
-Ignore:
-- documentation/architecture copy.md
-- documentation/task-template copy.md
+- documentation/frontend-state-sync.md
 ```
 
 ---
@@ -178,10 +163,6 @@ Primary source docs:
 - documentation/validation-rules.md
 - documentation/test-matrix.md
 - documentation/ui-flows.md
-
-Ignore:
-- documentation/architecture copy.md
-- documentation/task-template copy.md
 ```
 
 ---
@@ -231,13 +212,10 @@ Primary source docs:
 - documentation/api.md
 - documentation/openapi.yaml
 - documentation/data-model.md
+- documentation/frontend-state-sync.md
 - documentation/ui-flows.md
 - documentation/test-matrix.md
 - documentation/non-functional-requirements.md
-
-Ignore:
-- documentation/architecture copy.md
-- documentation/task-template copy.md
 ```
 
 ---
@@ -291,10 +269,6 @@ Primary source docs:
 - documentation/non-functional-requirements.md
 - documentation/architecture.md
 - documentation/test-matrix.md
-
-Ignore:
-- documentation/architecture copy.md
-- documentation/task-template copy.md
 ```
 
 ---
@@ -303,5 +277,4 @@ Ignore:
 
 - After each feature spec is generated, use the normal Spec Kit planning/task steps before moving to the next slice.
 - Prefer one roadmap slice per feature spec unless there is a strong reason to merge them.
-- If you later rename `documentation/task-template copy.md` into a reviewed frontend sync document, add it to the canonical source set before generating frontend-heavy specs.
-
+- `documentation/frontend-state-sync.md` is now part of the canonical source set for frontend-heavy or sync-sensitive feature specs.
