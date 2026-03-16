@@ -18,6 +18,8 @@ build/
 
 # Test
 coverage/
+test-results/
+playwright-report/
 
 # Docker
 postgres_data/
