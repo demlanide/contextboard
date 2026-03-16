@@ -42,6 +42,18 @@ export async function findBoardById(
   return rowToBoard(rows[0]);
 }
 
+export async function findByIdExcludingDeleted(
+  client: PoolClient,
+  id: string
+): Promise<Board | null> {
+  const { rows } = await client.query(
+    `SELECT * FROM boards WHERE id = $1 AND status <> 'deleted'`,
+    [id]
+  );
+  if (rows.length === 0) return null;
+  return rowToBoard(rows[0]);
+}
+
 export async function listBoards(client: PoolClient): Promise<Board[]> {
   const { rows } = await client.query(
     `SELECT * FROM boards WHERE status != 'deleted' ORDER BY updated_at DESC`

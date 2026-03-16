@@ -27,21 +27,21 @@ It is a scope-and-sequencing document for implementation planning, Spec Kit feat
 
 ## 3. Slice Summary
 
-| Slice | Name | Outcome | Depends on |
-|---|---|---|---|
-| S0 | Engineering foundation | Repo, runtime, migrations, test harness, API skeleton | None |
-| S1 | Board foundation | Boards can be created, listed, loaded, updated, soft-deleted | S0 |
-| S2 | Board state hydration | Client can load a stable full board state envelope | S1 |
-| S3 | Revision + operations foundation | Durable mutations have revision semantics and operation logging | S1 |
-| S4 | Nodes CRUD | User can create, update, and delete board nodes safely | S1, S2, S3 |
-| S5 | Edges CRUD | User can connect nodes with validated edges | S4 |
-| S6 | Batch node mutations | Atomic multi-node changes are supported | S4, S3 |
-| S7 | Assets + image nodes | Uploads work and image nodes can reference uploaded assets | S4 |
-| S8 | Chat persistence | Board chat works with durable messages and selection context | S1, S2 |
-| S9 | Agent suggest | Agent can analyze board context and return safe action plans | S4, S5, S7, S8 |
-| S10 | Agent apply | User can atomically apply validated action plans | S3, S4, S5, S7, S9 |
-| S11 | Operations polling | Client can incrementally fetch operations after a revision | S3 |
-| S12 | Recovery + polish | Snapshots, restore aids, summaries, undo foundations | S10, S11 |
+| Slice | Name                             | Outcome                                                        | Depends on             |
+|-------|----------------------------------|----------------------------------------------------------------|------------------------|
+| S0    | Engineering foundation           | Repo, runtime, migrations, test harness, API skeleton          | None                   |
+| S1    | Board foundation                 | Boards can be created, listed, loaded, updated, soft-deleted   | S0                     |
+| S2    | Board state hydration            | Client can load a stable full board state envelope             | S1                     |
+| S3    | Revision + operations foundation | Durable mutations have revision semantics and operation logging| S1                     |
+| S4    | Nodes CRUD                       | User can create, update, and delete board nodes safely         | S1, S2, S3             |
+| S5    | Edges CRUD                       | User can connect nodes with validated edges                    | S4                     |
+| S6    | Batch node mutations             | Atomic multi-node changes are supported                        | S4, S3                 |
+| S7    | Assets + image nodes             | Uploads work and image nodes can reference uploaded assets     | S4                     |
+| S8    | Chat persistence                 | Board chat works with durable messages and selection context   | S1, S2                 |
+| S9    | Agent suggest                    | Agent can analyze board context and return safe action plans   | S4, S5, S7, S8         |
+| S10   | Agent apply                      | User can atomically apply validated action plans               | S3, S4, S5, S7, S9     |
+| S11   | Operations polling               | Client can incrementally fetch operations after a revision     | S3                     |
+| S12   | Recovery + polish                | Snapshots, restore aids, summaries, undo foundations           | S10, S11               |
 
 ---
 

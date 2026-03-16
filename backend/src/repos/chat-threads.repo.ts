@@ -11,6 +11,18 @@ function rowToChatThread(row: Record<string, unknown>): ChatThread {
   };
 }
 
+export async function findByBoardId(
+  client: PoolClient,
+  boardId: string
+): Promise<ChatThread | null> {
+  const { rows } = await client.query(
+    `SELECT * FROM chat_threads WHERE board_id = $1`,
+    [boardId]
+  );
+  if (rows.length === 0) return null;
+  return rowToChatThread(rows[0]);
+}
+
 export async function insertChatThread(
   client: PoolClient,
   thread: { id: string; board_id: string }

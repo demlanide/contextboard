@@ -8,6 +8,7 @@ import {
   handleUpdateBoard,
   handleDeleteBoard,
 } from './controllers/boards.controller.js';
+import { handleGetBoardState } from './controllers/board-state.controller.js';
 
 const router = Router();
 
@@ -16,6 +17,9 @@ router.post('/boards', idempotencyMiddleware('create_board'), handleCreateBoard)
 
 // US2: List Boards
 router.get('/boards', handleListBoards);
+
+// S2: Get Board State (hydration)
+router.get('/boards/:boardId/state', handleGetBoardState);
 
 // US3: Get Board
 router.get('/boards/:boardId', handleGetBoard);
