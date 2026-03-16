@@ -1,0 +1,1810 @@
+openapi: 3.1.0
+info:
+  title: Context Board MVP API
+  version: 1.0.0
+  summary: REST API for a single-user AI-first visual whiteboard MVP
+  description: |
+    Context Board is an AI-first visual workspace with an infinite canvas and a board-aware chat agent.
+
+    MVP constraints:
+    - single-user only
+    - no authentication
+    - one board = one chat thread
+    - backend is source of truth
+    - all durable mutations are logged
+    - agent edits use suggest/apply flow
+servers:
+  - url: /api
+tags:
+  - name: boards
+  - name: state
+  - name: nodes
+  - name: edges
+  - name: assets
+  - name: chat
+  - name: agent
+  - name: operations
+
+paths:
+  /boards:
+    get:
+      tags: [boards]
+      summary: List boards
+      operationId: listBoards
+      responses:
+        '200':
+          description: Board list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardListResponse'
+    post:
+      tags: [boards]
+      summary: Create board
+      operationId: createBoard
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBoardRequest'
+      responses:
+        '201':
+          description: Board created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBoardResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /boards/{boardId}:
+    get:
+      tags: [boards]
+      summary: Get board
+      operationId: getBoard
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      responses:
+        '200':
+          description: Board metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBoardResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+    patch:
+      tags: [boards]
+      summary: Update board
+      operationId: updateBoard
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/UpdateBoardRequest'
+      responses:
+        '200':
+          description: Board updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBoardResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+    delete:
+      tags: [boards]
+      summary: Soft-delete board
+      operationId: deleteBoard
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      responses:
+        '200':
+          description: Board deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteBoardResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+
+  /boards/{boardId}/state:
+    get:
+      tags: [state]
+      summary: Get full board state
+      operationId: getBoardState
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      responses:
+        '200':
+          description: Full board state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBoardStateResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+
+  /boards/{boardId}/nodes:
+    post:
+      tags: [nodes]
+      summary: Create node
+      operationId: createNode
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNodeRequest'
+      responses:
+        '201':
+          description: Node created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /boards/{boardId}/nodes/batch:
+    post:
+      tags: [nodes]
+      summary: Atomic batch node mutation
+      operationId: batchMutateNodes
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchNodesRequest'
+      responses:
+        '200':
+          description: Batch mutation applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchNodesResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /nodes/{nodeId}:
+    patch:
+      tags: [nodes]
+      summary: Update node
+      operationId: updateNode
+      parameters:
+        - $ref: '#/components/parameters/NodeId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/UpdateNodeRequest'
+      responses:
+        '200':
+          description: Node updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeResponse'
+        '404':
+          $ref: '#/components/responses/NodeNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/LockedNode'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+    delete:
+      tags: [nodes]
+      summary: Soft-delete node
+      operationId: deleteNode
+      parameters:
+        - $ref: '#/components/parameters/NodeId'
+      responses:
+        '200':
+          description: Node deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteNodeResponse'
+        '404':
+          $ref: '#/components/responses/NodeNotFound'
+
+  /boards/{boardId}/edges:
+    post:
+      tags: [edges]
+      summary: Create edge
+      operationId: createEdge
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEdgeRequest'
+      responses:
+        '201':
+          description: Edge created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EdgeResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /edges/{edgeId}:
+    patch:
+      tags: [edges]
+      summary: Update edge
+      operationId: updateEdge
+      parameters:
+        - $ref: '#/components/parameters/EdgeId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/UpdateEdgeRequest'
+      responses:
+        '200':
+          description: Edge updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EdgeResponse'
+        '404':
+          $ref: '#/components/responses/EdgeNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+    delete:
+      tags: [edges]
+      summary: Soft-delete edge
+      operationId: deleteEdge
+      parameters:
+        - $ref: '#/components/parameters/EdgeId'
+      responses:
+        '200':
+          description: Edge deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteEdgeResponse'
+        '404':
+          $ref: '#/components/responses/EdgeNotFound'
+
+  /assets/upload:
+    post:
+      tags: [assets]
+      summary: Upload asset
+      operationId: uploadAsset
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                boardId:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        '201':
+          description: Asset uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+
+  /assets/{assetId}:
+    get:
+      tags: [assets]
+      summary: Get asset metadata
+      operationId: getAsset
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+      responses:
+        '200':
+          description: Asset metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+        '404':
+          $ref: '#/components/responses/AssetNotFound'
+
+  /assets/{assetId}/file:
+    get:
+      tags: [assets]
+      summary: Download original asset bytes
+      operationId: getAssetFile
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+      responses:
+        '200':
+          description: Asset file bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/AssetNotFound'
+
+  /assets/{assetId}/thumbnail:
+    get:
+      tags: [assets]
+      summary: Download generated thumbnail bytes
+      operationId: getAssetThumbnail
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+      responses:
+        '200':
+          description: Thumbnail bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/ThumbnailNotFound'
+
+  /boards/{boardId}/chat:
+    get:
+      tags: [chat]
+      summary: Get board chat
+      operationId: getBoardChat
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      responses:
+        '200':
+          description: Chat thread and messages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetChatResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+
+  /boards/{boardId}/chat/messages:
+    post:
+      tags: [chat]
+      summary: Send chat message
+      operationId: sendChatMessage
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendChatMessageRequest'
+      responses:
+        '200':
+          description: User message persisted and agent reply returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendChatMessageResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /boards/{boardId}/agent/actions:
+    post:
+      tags: [agent]
+      summary: Generate agent action plan
+      operationId: createAgentActionPlan
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentActionsRequest'
+      responses:
+        '200':
+          description: Agent response with optional action plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentActionsResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /boards/{boardId}/agent/actions/apply:
+    post:
+      tags: [agent]
+      summary: Apply agent action plan
+      operationId: applyAgentActionPlan
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyAgentActionsRequest'
+      responses:
+        '200':
+          description: Action plan applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplyAgentActionsResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/ActionPlanInvalid'
+
+  /boards/{boardId}/operations:
+    get:
+      tags: [operations]
+      summary: Get board operations
+      operationId: getBoardOperations
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - name: afterRevision
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+      responses:
+        '200':
+          description: Operations list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetOperationsResponse'
+        '404':
+          $ref: '#/components/responses/BoardNotFound'
+
+components:
+  parameters:
+    BoardId:
+      name: boardId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NodeId:
+      name: nodeId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    EdgeId:
+      name: edgeId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AssetId:
+      name: assetId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+
+  responses:
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: VALIDATION_ERROR
+              message: Invalid request
+              details: {}
+    BoardNotFound:
+      description: Board not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: BOARD_NOT_FOUND
+              message: Board not found
+              details: {}
+    NodeNotFound:
+      description: Node not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: NODE_NOT_FOUND
+              message: Node not found
+              details: {}
+    EdgeNotFound:
+      description: Edge not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: EDGE_NOT_FOUND
+              message: Edge not found
+              details: {}
+    AssetNotFound:
+      description: Asset not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: ASSET_NOT_FOUND
+              message: Asset not found
+              details: {}
+    ThumbnailNotFound:
+      description: Thumbnail not available
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: ASSET_THUMBNAIL_NOT_AVAILABLE
+              message: Asset thumbnail not available
+              details: {}
+    LockedNode:
+      description: Node is locked
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: LOCKED_NODE
+              message: Node is locked
+              details: {}
+    ActionPlanInvalid:
+      description: Action plan invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: ACTION_PLAN_INVALID
+              message: Action plan is invalid
+              details: {}
+    ConflictError:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: IDEMPOTENCY_CONFLICT
+              message: Request conflicts with an existing idempotent result
+              details: {}
+    UnsupportedMediaType:
+      description: Unsupported media type
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: UNSUPPORTED_MEDIA_TYPE
+              message: Unsupported media type
+              details: {}
+    PayloadTooLarge:
+      description: Payload too large
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            data: null
+            error:
+              code: PAYLOAD_TOO_LARGE
+              message: Uploaded file exceeds configured size limit
+              details: {}
+
+  schemas:
+    EnvelopeMeta:
+      type: object
+      additionalProperties: true
+
+    ErrorObject:
+      type: object
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorEnvelope:
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: 'null'
+        error:
+          $ref: '#/components/schemas/ErrorObject'
+
+    SuccessEnvelopeBase:
+      type: object
+      required: [data, error]
+      properties:
+        error:
+          type: 'null'
+
+    BoardStatus:
+      type: string
+      enum: [active, archived, deleted]
+
+    NodeType:
+      type: string
+      enum: [sticky, text, image, shape]
+
+    ChatSenderType:
+      type: string
+      enum: [user, agent, system]
+
+    AgentMode:
+      type: string
+      enum: [suggest, apply]
+
+    AssetKind:
+      type: string
+      enum: [image, file]
+
+    AssetProcessingStatus:
+      type: string
+      enum: [pending, processing, ready, failed]
+
+    OperationActorType:
+      type: string
+      enum: [user, agent, system]
+
+    SelectionContext:
+      type: object
+      additionalProperties: false
+      properties:
+        selectedNodeIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          default: []
+        selectedEdgeIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          default: []
+        viewport:
+          $ref: '#/components/schemas/ViewportState'
+
+    ViewportState:
+      type: object
+      additionalProperties: false
+      required: [x, y, zoom]
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+        zoom:
+          type: number
+          exclusiveMinimum: 0
+
+    BoardSettings:
+      type: object
+      additionalProperties: true
+      properties:
+        gridEnabled:
+          type: boolean
+        snapToGrid:
+          type: boolean
+        agentEditMode:
+          $ref: '#/components/schemas/AgentMode'
+
+    BoardSummary:
+      type: object
+      additionalProperties: true
+
+    Board:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - status
+        - viewportState
+        - settings
+        - summary
+        - revision
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+          maxLength: 10000
+        status:
+          $ref: '#/components/schemas/BoardStatus'
+        viewportState:
+          $ref: '#/components/schemas/ViewportState'
+        settings:
+          $ref: '#/components/schemas/BoardSettings'
+        summary:
+          $ref: '#/components/schemas/BoardSummary'
+        revision:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    NodeContentSticky:
+      type: object
+      required: [text]
+      additionalProperties: true
+      properties:
+        text:
+          type: string
+          maxLength: 20000
+
+    NodeContentText:
+      type: object
+      required: [text]
+      additionalProperties: true
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        text:
+          type: string
+          maxLength: 20000
+
+    NodeContentImage:
+      type: object
+      required: [assetId]
+      additionalProperties: true
+      properties:
+        assetId:
+          type: string
+          format: uuid
+        caption:
+          type: string
+          maxLength: 2000
+
+    ShapeType:
+      type: string
+      enum: [rectangle, ellipse, diamond]
+
+    NodeContentShape:
+      type: object
+      required: [shapeType]
+      additionalProperties: true
+      properties:
+        shapeType:
+          $ref: '#/components/schemas/ShapeType'
+        text:
+          type: string
+          maxLength: 5000
+
+    NodeStyle:
+      type: object
+      additionalProperties: true
+
+    NodeMetadata:
+      type: object
+      additionalProperties: true
+
+    Node:
+      type: object
+      required:
+        - id
+        - boardId
+        - type
+        - parentId
+        - x
+        - y
+        - width
+        - height
+        - rotation
+        - zIndex
+        - content
+        - style
+        - metadata
+        - locked
+        - hidden
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/NodeType'
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        x:
+          type: number
+        y:
+          type: number
+        width:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 10000
+        height:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 10000
+        rotation:
+          type: number
+        zIndex:
+          type: integer
+        content:
+          type: object
+          additionalProperties: true
+        style:
+          $ref: '#/components/schemas/NodeStyle'
+        metadata:
+          $ref: '#/components/schemas/NodeMetadata'
+        locked:
+          type: boolean
+        hidden:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Edge:
+      type: object
+      required:
+        - id
+        - boardId
+        - sourceNodeId
+        - targetNodeId
+        - label
+        - style
+        - metadata
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+        sourceNodeId:
+          type: string
+          format: uuid
+        targetNodeId:
+          type: string
+          format: uuid
+        label:
+          type: string
+          nullable: true
+          maxLength: 1000
+        style:
+          type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Asset:
+      type: object
+      required:
+        - id
+        - boardId
+        - kind
+        - mimeType
+        - originalFilename
+        - url
+        - thumbnailUrl
+        - fileSizeBytes
+        - width
+        - height
+        - processingStatus
+        - extractedText
+        - aiCaption
+        - metadata
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+          nullable: true
+        kind:
+          $ref: '#/components/schemas/AssetKind'
+        mimeType:
+          type: string
+          nullable: true
+        originalFilename:
+          type: string
+          nullable: true
+        url:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        fileSizeBytes:
+          type: integer
+          nullable: true
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        processingStatus:
+          $ref: '#/components/schemas/AssetProcessingStatus'
+        extractedText:
+          type: string
+          nullable: true
+        aiCaption:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ChatThread:
+      type: object
+      required: [id, boardId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+
+    ChatMessage:
+      type: object
+      required:
+        - id
+        - threadId
+        - senderType
+        - messageText
+        - messageJson
+        - selectionContext
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        threadId:
+          type: string
+          format: uuid
+        senderType:
+          $ref: '#/components/schemas/ChatSenderType'
+        messageText:
+          type: string
+          nullable: true
+          maxLength: 20000
+        messageJson:
+          type: object
+          additionalProperties: true
+        selectionContext:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+
+    Operation:
+      type: object
+      required:
+        - id
+        - boardId
+        - boardRevision
+        - actorType
+        - operationType
+        - targetType
+        - payload
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+        boardRevision:
+          type: integer
+          minimum: 0
+        actorType:
+          $ref: '#/components/schemas/OperationActorType'
+        operationType:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+          format: uuid
+          nullable: true
+        batchId:
+          type: string
+          format: uuid
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true
+        inversePayload:
+          type: object
+          additionalProperties: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateBoardRequest:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 10000
+
+    UpdateBoardRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+          maxLength: 10000
+        viewportState:
+          $ref: '#/components/schemas/ViewportState'
+        settings:
+          $ref: '#/components/schemas/BoardSettings'
+        summary:
+          $ref: '#/components/schemas/BoardSummary'
+
+    CreateNodeRequest:
+      type: object
+      required: [type, x, y, width, height, content]
+      additionalProperties: false
+      properties:
+        type:
+          $ref: '#/components/schemas/NodeType'
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        x:
+          type: number
+        y:
+          type: number
+        width:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 10000
+        height:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 10000
+        rotation:
+          type: number
+          default: 0
+        zIndex:
+          type: integer
+          default: 0
+        content:
+          type: object
+          additionalProperties: true
+        style:
+          type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
+
+    UpdateNodeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        x:
+          type: number
+        y:
+          type: number
+        width:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 10000
+        height:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 10000
+        rotation:
+          type: number
+        zIndex:
+          type: integer
+        content:
+          type: object
+          additionalProperties: true
+        style:
+          type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
+        locked:
+          type: boolean
+        hidden:
+          type: boolean
+
+    BatchNodeOperationCreate:
+      type: object
+      required: [type, tempId, node]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: create
+        tempId:
+          type: string
+        node:
+          $ref: '#/components/schemas/CreateNodeRequest'
+
+    BatchNodeOperationUpdate:
+      type: object
+      required: [type, nodeId, changes]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: update
+        nodeId:
+          type: string
+          format: uuid
+        changes:
+          $ref: '#/components/schemas/UpdateNodeRequest'
+
+    BatchNodeOperationDelete:
+      type: object
+      required: [type, nodeId]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: delete
+        nodeId:
+          type: string
+          format: uuid
+
+    BatchNodeOperation:
+      oneOf:
+        - $ref: '#/components/schemas/BatchNodeOperationCreate'
+        - $ref: '#/components/schemas/BatchNodeOperationUpdate'
+        - $ref: '#/components/schemas/BatchNodeOperationDelete'
+
+    BatchNodesRequest:
+      type: object
+      required: [operations]
+      additionalProperties: false
+      properties:
+        operations:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/BatchNodeOperation'
+
+    CreateEdgeRequest:
+      type: object
+      required: [sourceNodeId, targetNodeId]
+      additionalProperties: false
+      properties:
+        sourceNodeId:
+          type: string
+          format: uuid
+        targetNodeId:
+          type: string
+          format: uuid
+        label:
+          type: string
+          nullable: true
+          maxLength: 1000
+        style:
+          type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
+
+    UpdateEdgeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+          nullable: true
+          maxLength: 1000
+        style:
+          type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
+
+    SendChatMessageRequest:
+      type: object
+      required: [message]
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+          maxLength: 20000
+        selectionContext:
+          $ref: '#/components/schemas/SelectionContext'
+
+    ActionPlanCreateNode:
+      type: object
+      required: [type, tempId, node]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: create_node
+        tempId:
+          type: string
+        node:
+          $ref: '#/components/schemas/CreateNodeRequest'
+
+    ActionPlanUpdateNode:
+      type: object
+      required: [type, targetId, changes]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: update_node
+        targetId:
+          type: string
+          format: uuid
+        changes:
+          $ref: '#/components/schemas/UpdateNodeRequest'
+
+    ActionPlanDeleteNode:
+      type: object
+      required: [type, targetId]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: delete_node
+        targetId:
+          type: string
+          format: uuid
+
+    ActionPlanCreateEdge:
+      type: object
+      required: [type, tempId, edge]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: create_edge
+        tempId:
+          type: string
+        edge:
+          $ref: '#/components/schemas/CreateEdgeRequest'
+
+    ActionPlanUpdateEdge:
+      type: object
+      required: [type, targetId, changes]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: update_edge
+        targetId:
+          type: string
+          format: uuid
+        changes:
+          $ref: '#/components/schemas/UpdateEdgeRequest'
+
+    ActionPlanDeleteEdge:
+      type: object
+      required: [type, targetId]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: delete_edge
+        targetId:
+          type: string
+          format: uuid
+
+    BatchLayoutItem:
+      type: object
+      required: [nodeId, x, y]
+      additionalProperties: false
+      properties:
+        nodeId:
+          type: string
+          format: uuid
+        x:
+          type: number
+        y:
+          type: number
+
+    ActionPlanBatchLayout:
+      type: object
+      required: [type, items]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          const: batch_layout
+        items:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/BatchLayoutItem'
+
+    ActionPlanItem:
+      oneOf:
+        - $ref: '#/components/schemas/ActionPlanCreateNode'
+        - $ref: '#/components/schemas/ActionPlanUpdateNode'
+        - $ref: '#/components/schemas/ActionPlanDeleteNode'
+        - $ref: '#/components/schemas/ActionPlanCreateEdge'
+        - $ref: '#/components/schemas/ActionPlanUpdateEdge'
+        - $ref: '#/components/schemas/ActionPlanDeleteEdge'
+        - $ref: '#/components/schemas/ActionPlanBatchLayout'
+
+    AgentActionsRequest:
+      type: object
+      required: [prompt, mode]
+      additionalProperties: false
+      properties:
+        prompt:
+          type: string
+          maxLength: 20000
+        mode:
+          $ref: '#/components/schemas/AgentMode'
+        selectionContext:
+          $ref: '#/components/schemas/SelectionContext'
+
+    Preview:
+      type: object
+      additionalProperties: false
+      properties:
+        affectedNodeIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        newNodeTempIds:
+          type: array
+          items:
+            type: string
+
+    ApplyAgentActionsRequest:
+      type: object
+      required: [sourceMessageId, actionPlan]
+      additionalProperties: false
+      properties:
+        sourceMessageId:
+          type: string
+          format: uuid
+        actionPlan:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/ActionPlanItem'
+
+    BoardListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [boards]
+              properties:
+                boards:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Board'
+
+    CreateBoardResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [board, chatThread]
+              properties:
+                board:
+                  $ref: '#/components/schemas/Board'
+                chatThread:
+                  $ref: '#/components/schemas/ChatThread'
+
+    GetBoardResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [board]
+              properties:
+                board:
+                  $ref: '#/components/schemas/Board'
+
+    DeleteBoardResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [success, boardId]
+              properties:
+                success:
+                  type: boolean
+                boardId:
+                  type: string
+                  format: uuid
+
+    GetBoardStateResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [board, nodes, edges, chatThread, lastOperationRevision]
+              properties:
+                board:
+                  $ref: '#/components/schemas/Board'
+                nodes:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Node'
+                edges:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Edge'
+                chatThread:
+                  $ref: '#/components/schemas/ChatThread'
+                lastOperationRevision:
+                  type: integer
+                  minimum: 0
+
+    NodeResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [node]
+              properties:
+                node:
+                  $ref: '#/components/schemas/Node'
+
+    DeleteNodeResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [success, deletedNodeId]
+              properties:
+                success:
+                  type: boolean
+                deletedNodeId:
+                  type: string
+                  format: uuid
+
+    BatchNodesResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [batchId, boardRevision, created, updated, deleted]
+              properties:
+                batchId:
+                  type: string
+                  format: uuid
+                boardRevision:
+                  type: integer
+                  minimum: 0
+                created:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+                updated:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+                deleted:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+
+    EdgeResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [edge]
+              properties:
+                edge:
+                  $ref: '#/components/schemas/Edge'
+
+    DeleteEdgeResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [success, deletedEdgeId]
+              properties:
+                success:
+                  type: boolean
+                deletedEdgeId:
+                  type: string
+                  format: uuid
+
+    AssetResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [asset]
+              properties:
+                asset:
+                  $ref: '#/components/schemas/Asset'
+
+    GetChatResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [thread, messages]
+              properties:
+                thread:
+                  $ref: '#/components/schemas/ChatThread'
+                messages:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ChatMessage'
+
+    SendChatMessageResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [userMessage, agentMessage]
+              properties:
+                userMessage:
+                  $ref: '#/components/schemas/ChatMessage'
+                agentMessage:
+                  $ref: '#/components/schemas/ChatMessage'
+
+    AgentActionsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [message, actionPlan, preview]
+              properties:
+                message:
+                  $ref: '#/components/schemas/ChatMessage'
+                actionPlan:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ActionPlanItem'
+                preview:
+                  $ref: '#/components/schemas/Preview'
+
+    ApplyAgentActionsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [applied, batchId, boardRevision, created, updated, deleted]
+              properties:
+                applied:
+                  type: boolean
+                batchId:
+                  type: string
+                  format: uuid
+                boardRevision:
+                  type: integer
+                  minimum: 0
+                created:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+                updated:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+                deleted:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+
+    GetOperationsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [operations, nextCursor]
+              properties:
+                operations:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Operation'
+                nextCursor:
+                  type: string
+                  nullable: true
