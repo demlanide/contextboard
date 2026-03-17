@@ -1,8 +1,31 @@
+import { useEffect } from 'react'
 import { useBoardStore } from '@/store/board.store'
+import { useChat } from '@/hooks/useChat'
+import { MessageList } from '@/components/chat/MessageList'
+import { MessageComposer } from '@/components/chat/MessageComposer'
+import { ErrorMessage } from '@/components/shared/ErrorMessage'
 
 export function ChatSidebar() {
   const open = useBoardStore((s) => s.ui.chatSidebarOpen)
   const toggle = useBoardStore((s) => s.toggleChatSidebar)
+  const boardId = useBoardStore((s) => s.boardId)
+  const boardStatus = useBoardStore((s) => s.board?.status)
+
+  const { messages, sendStatus, loadStatus, lastError, loadHistory, sendMessage } = useChat()
+
+  useEffect(() => {
+    if (boardId) {
+      loadHistory(boardId)
+    }
+  }, [boardId, loadHistory])
+
+  const handleSend = (text: string) => {
+    if (boardId) {
+      sendMessage(boardId, text)
+    }
+  }
+
+  const isArchived = boardStatus === 'archived'
 
   return (
     <aside
@@ -18,9 +41,29 @@ export function ChatSidebar() {
           Collapse
         </button>
       </div>
-      <div className="flex-1 flex items-center justify-center p-4">
-        <p className="text-gray-400 text-sm">Chat coming in S8</p>
-      </div>
+
+      {loadStatus === 'error' ? (
+        <ErrorMessage
+          message={lastError ?? 'Failed to load chat'}
+          retryable
+          onRetry={() => boardId && loadHistory(boardId)}
+        />
+      ) : (
+        <MessageList messages={messages} loadStatus={loadStatus} />
+      )}
+
+      {lastError && sendStatus !== 'sending' && loadStatus !== 'error' && (
+        <div className="px-3 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">
+          {lastError}
+        </div>
+      )}
+
+      <MessageComposer
+        onSend={handleSend}
+        sending={sendStatus === 'sending'}
+        disabled={isArchived}
+        disabledText="This board is archived. Chat is read-only."
+      />
     </aside>
   )
 }

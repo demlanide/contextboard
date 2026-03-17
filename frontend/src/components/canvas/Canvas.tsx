@@ -216,9 +216,9 @@ export function Canvas() {
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-hidden relative min-h-0"
+      className="flex-1 overflow-hidden relative min-h-0 select-none"
       style={{
-        cursor: placementMode ? 'crosshair' : connectionDrag ? 'crosshair' : isPanning ? 'grabbing' : 'grab',
+        cursor: placementMode ? 'crosshair' : connectionDrag ? 'crosshair' : isPanning ? 'grabbing' : 'default',
         backgroundColor: '#f8f9fa',
         backgroundImage: 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
         backgroundSize: '24px 24px',

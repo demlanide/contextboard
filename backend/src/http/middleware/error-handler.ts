@@ -5,6 +5,7 @@ import { NodeError, NodeNotFoundError, NodeLockedError } from '../../domain/vali
 import { EdgeError, EdgeNotFoundError, InvalidEdgeReferenceError } from '../../domain/validation/edge-rules.js';
 import { BatchValidationError } from '../../domain/validation/batch-rules.js';
 import { AssetError, AssetNotFoundError, AssetThumbnailNotAvailableError } from '../../domain/validation/asset-rules.js';
+import { ChatError, ChatThreadNotFoundError } from '../../domain/validation/chat-rules.js';
 import { errorResponse } from '../../schemas/common.schemas.js';
 import { logger } from '../../obs/logger.js';
 
@@ -64,6 +65,15 @@ export function errorHandler(
     return res.status(status).json(errorResponse(err.code, err.message));
   }
 
+  // Chat errors
+  if (err instanceof ChatThreadNotFoundError) {
+    return res.status(404).json(errorResponse(err.code, err.message));
+  }
+
+  if (err instanceof ChatError) {
+    return res.status(422).json(errorResponse(err.code, err.message));
+  }
+
   // Board errors
   if (err instanceof BoardNotFoundError) {
     return res.status(404).json(errorResponse(err.code, err.message));
@@ -71,7 +81,7 @@ export function errorHandler(
 
   if (err instanceof BoardError) {
     // Archived board errors should return 409 Conflict
-    if (err.message === 'Archived boards are read-only') {
+    if (err.code === 'BOARD_ARCHIVED' || err.message === 'Archived boards are read-only') {
       return res.status(409).json(errorResponse(err.code, err.message));
     }
     return res.status(422).json(errorResponse(err.code, err.message));

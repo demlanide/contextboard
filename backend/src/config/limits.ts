@@ -17,6 +17,12 @@ export const limits = {
     maxOperations: 200,
     minOperations: 1,
   },
+  chat: {
+    messageText: { min: 1, max: 20_000 },
+    messagesPerLoad: 200,
+    selectionMaxNodeIds: 100,
+    selectionMaxEdgeIds: 100,
+  },
   asset: {
     imageMaxSizeBytes: 20 * 1024 * 1024,     // 20 MB
     fileMaxSizeBytes: 50 * 1024 * 1024,       // 50 MB

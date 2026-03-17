@@ -26,6 +26,10 @@ import {
   handleGetAssetFile,
   handleGetAssetThumbnail,
 } from './controllers/assets.controller.js';
+import {
+  handleGetChat,
+  handleSendMessage,
+} from './controllers/chat.controller.js';
 import { uploadMiddleware } from './middleware/upload.js';
 
 const router: RouterType = Router();
@@ -91,6 +95,10 @@ router.patch(
 );
 
 router.delete('/edges/:edgeId', handleDeleteEdge);
+
+// S9: Chat
+router.get('/boards/:boardId/chat', handleGetChat);
+router.post('/boards/:boardId/chat/messages', handleSendMessage);
 
 // S8: Asset CRUD
 router.post(

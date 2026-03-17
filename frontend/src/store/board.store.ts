@@ -1,5 +1,13 @@
 import { create } from 'zustand'
-import type { BoardStore, BoardNode, BoardEdge, BoardAsset, BatchMutationState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState } from './types'
+import type { BoardStore, BoardNode, BoardEdge, BoardAsset, BatchMutationState, ChatMessage, ChatState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState } from './types'
+
+const INITIAL_CHAT: ChatState = {
+  messages: [],
+  sendStatus: 'idle',
+  loadStatus: 'idle',
+  draftText: '',
+  lastError: null,
+}
 
 const INITIAL_BATCH: BatchMutationState = {
   status: 'idle',
@@ -30,6 +38,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   chatThread: null,
   pendingNodes: {},
   nodeMutationStatus: {},
+  chatState: INITIAL_CHAT,
   batchMutation: INITIAL_BATCH,
   ui: INITIAL_UI,
   sync: INITIAL_SYNC,
@@ -90,6 +99,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       chatThread: null,
       pendingNodes: {},
       nodeMutationStatus: {},
+      chatState: INITIAL_CHAT,
       batchMutation: INITIAL_BATCH,
       ui: INITIAL_UI,
       sync: INITIAL_SYNC,
@@ -103,6 +113,28 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
   toggleChatSidebar: () =>
     set((state) => ({ ui: { ...state.ui, chatSidebarOpen: !state.ui.chatSidebarOpen } })),
+
+  // ─── Chat Actions ──────────────────────────────────────────────────────────
+
+  loadChatHistory: (messages: ChatMessage[]) =>
+    set({ chatState: { ...INITIAL_CHAT, messages, loadStatus: 'ready' } }),
+
+  setChatLoadStatus: (status: ChatState['loadStatus']) =>
+    set((state) => ({ chatState: { ...state.chatState, loadStatus: status } })),
+
+  setChatSendStatus: (status: ChatState['sendStatus']) =>
+    set((state) => ({ chatState: { ...state.chatState, sendStatus: status } })),
+
+  appendChatMessages: (...messages: ChatMessage[]) =>
+    set((state) => ({
+      chatState: { ...state.chatState, messages: [...state.chatState.messages, ...messages] },
+    })),
+
+  setChatLastError: (error: string | null) =>
+    set((state) => ({ chatState: { ...state.chatState, lastError: error } })),
+
+  setChatDraftText: (text: string) =>
+    set((state) => ({ chatState: { ...state.chatState, draftText: text } })),
 
   // ─── Node CRUD UI Actions ──────────────────────────────────────────────────
 

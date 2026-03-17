@@ -5,9 +5,11 @@ alwaysApply: true
 ---
 # contextboard Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-03-16
+Auto-generated from all feature plans. Last updated: 2026-03-17
 
 ## Active Technologies
+- TypeScript 5.7+ (Node.js LTS for backend, browser for frontend) + Express (HTTP), Zod (schema validation), node-postgres (pg) for backend; React 19, React Router 7, Zustand, Vite for frontend; OpenAI SDK or fetch-based LLM client (stubbable) (010-agent-suggest-non-durable-ai-suggestion-flow-with-context-building-action-plan-validation-preview-payload-prompt-entry-ux-and-preview-ui)
+- PostgreSQL 15+ (reads existing boards/nodes/edges/assets/chat tables; writes chat_messages only); Zustand store (frontend agent/preview state) (010-agent-suggest-non-durable-ai-suggestion-flow-with-context-building-action-plan-validation-preview-payload-prompt-entry-ux-and-preview-ui)
 
 - TypeScript (Node.js LTS) + Express (HTTP), Zod (schema validation), node-postgres (pg) for database access (001-board-foundation)
 - PostgreSQL 15+ (001-board-foundation)
@@ -47,10 +49,10 @@ npm test; npm run lint
 TypeScript: Follow standard conventions
 
 ## Recent Changes
+- 010-agent-suggest-non-durable-ai-suggestion-flow-with-context-building-action-plan-validation-preview-payload-prompt-entry-ux-and-preview-ui: Added TypeScript 5.7+ (Node.js LTS for backend, browser for frontend) + Express (HTTP), Zod (schema validation), node-postgres (pg) for backend; React 19, React Router 7, Zustand, Vite for frontend; OpenAI SDK or fetch-based LLM client (stubbable)
 
 - 003-revision-operations: Refactored operation factory, added per-board advisory locks, withBoardMutation wrapper, narrowed operation_type enum
 - 002-board-state-hydration: Added board-state controller, service, and node/edge table migrations (read-only hydration endpoint)
-- 001-board-foundation: Added TypeScript (Node.js LTS) + Express (HTTP), Zod (schema validation), node-postgres (pg) for database access
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

@@ -115,6 +115,24 @@ export interface BoardAsset {
   updatedAt: string
 }
 
+export interface ChatMessage {
+  id: string
+  threadId: string
+  senderType: 'user' | 'agent' | 'system'
+  messageText: string | null
+  messageJson: Record<string, unknown>
+  selectionContext: Record<string, unknown>
+  createdAt: string
+}
+
+export interface ChatState {
+  messages: ChatMessage[]
+  sendStatus: 'idle' | 'sending' | 'error'
+  loadStatus: 'idle' | 'loading' | 'ready' | 'error'
+  draftText: string
+  lastError: string | null
+}
+
 export interface BoardListItem {
   id: string
   title: string
@@ -143,6 +161,7 @@ export interface BoardStore {
   pendingNodes: Record<string, PendingNode>
   nodeMutationStatus: Record<string, 'pending' | 'confirmed' | 'failed'>
   batchMutation: BatchMutationState
+  chatState: ChatState
   ui: UIState
   sync: SyncState
 
@@ -152,6 +171,14 @@ export interface BoardStore {
   setHydrateStatus: (status: SyncState['hydrateStatus']) => void
   setError: (error: SyncError) => void
   toggleChatSidebar: () => void
+
+  // Chat actions
+  loadChatHistory: (messages: ChatMessage[]) => void
+  setChatLoadStatus: (status: ChatState['loadStatus']) => void
+  setChatSendStatus: (status: ChatState['sendStatus']) => void
+  appendChatMessages: (...messages: ChatMessage[]) => void
+  setChatLastError: (error: string | null) => void
+  setChatDraftText: (text: string) => void
 
   // Node CRUD actions
   setPlacementMode: (mode: BoardNode['type'] | null) => void

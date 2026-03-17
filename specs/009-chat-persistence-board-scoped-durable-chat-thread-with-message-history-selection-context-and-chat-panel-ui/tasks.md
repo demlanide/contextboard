@@ -20,9 +20,9 @@
 
 **Purpose**: Add configuration, create DB migration, and establish the agent stub that all chat user stories depend on.
 
-- [ ] T001 Add chat limits to backend/src/config/limits.ts — chat.messageText { min: 1, max: 20_000 }, chat.messagesPerLoad: 200, chat.selectionMaxNodeIds: 100, chat.selectionMaxEdgeIds: 100
-- [ ] T002 Add agent timeout config to backend/src/config/env.ts — AGENT_TIMEOUT_MS (default 12000), CHAT_REQUEST_TIMEOUT_MS (default 20000)
-- [ ] T003 Create database migration backend/src/db/migrations/009_create_chat_messages.sql — chat_messages table with id, thread_id, sender_type, message_text, message_json, selection_context columns, sender_type CHECK constraint, and indexes (thread_id+created_at, sender_type) per data-model.md
+- [x] T001 Add chat limits to backend/src/config/limits.ts — chat.messageText { min: 1, max: 20_000 }, chat.messagesPerLoad: 200, chat.selectionMaxNodeIds: 100, chat.selectionMaxEdgeIds: 100
+- [x] T002 Add agent timeout config to backend/src/config/env.ts — AGENT_TIMEOUT_MS (default 12000), CHAT_REQUEST_TIMEOUT_MS (default 20000)
+- [x] T003 Create database migration backend/src/db/migrations/009_create_chat_messages.sql — chat_messages table with id, thread_id, sender_type, message_text, message_json, selection_context columns, sender_type CHECK constraint, and indexes (thread_id+created_at, sender_type) per data-model.md
 
 **Checkpoint**: Configuration extended, migration ready to run.
 
@@ -34,12 +34,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 [P] Create Zod schemas in backend/src/schemas/chat.schemas.ts — SendMessageRequest (message: string 1–20000 chars, selectionContext: optional object with selectedNodeIds string[], selectedEdgeIds string[], viewport {x,y,zoom}), ChatMessageResponse shape (id, threadId, senderType, messageText, messageJson, selectionContext, createdAt), GetChatResponse (thread + messages[]), SendMessageResponse (userMessage + agentMessage nullable)
-- [ ] T005 [P] Create chat messages repository in backend/src/repos/chat-messages.repo.ts — insertMessage(client, {id, thread_id, sender_type, message_text, message_json, selection_context}): ChatMessage, findByThreadId(client, threadId, limit): ChatMessage[] ordered by created_at ASC; typed row-to-ChatMessage mapping following chat-threads.repo.ts pattern
-- [ ] T006 [P] Create chat validation rules in backend/src/domain/validation/chat-rules.ts — validateMessageText (length limits from config), validateSelectionContext (object shape, array lengths), assertBoardChatWritable (board exists + status=active, throws BOARD_NOT_FOUND or BOARD_ARCHIVED), assertThreadExists (throws CHAT_THREAD_NOT_FOUND)
-- [ ] T007 [P] Create agent stub in backend/src/agent/agent-stub.ts — export generateAgentResponse({ boardId, messageText, selectionContext, boardContext? }): Promise<{ text: string, messageJson: object }> returning canned acknowledgment; wrapping in a configurable timeout from AGENT_TIMEOUT_MS; designed as drop-in replacement point for real LLM in S9
-- [ ] T008 [P] Create chat API client in frontend/src/api/chat.api.ts — getChatHistory(boardId): Promise<GetChatResponse>, sendMessage(boardId, message, selectionContext?): Promise<SendMessageResponse>; use existing api/client.ts base
-- [ ] T009 [P] Add chat types to frontend/src/store/types.ts — ChatMessage interface (id, threadId, senderType, messageText, messageJson, selectionContext, createdAt), ChatState interface (messages: ChatMessage[], sendStatus: 'idle'|'sending'|'error', loadStatus: 'idle'|'loading'|'ready'|'error', draftText: string, lastError: string|null), add chatState to BoardStore interface
+- [x] T004 [P] Create Zod schemas in backend/src/schemas/chat.schemas.ts — SendMessageRequest (message: string 1–20000 chars, selectionContext: optional object with selectedNodeIds string[], selectedEdgeIds string[], viewport {x,y,zoom}), ChatMessageResponse shape (id, threadId, senderType, messageText, messageJson, selectionContext, createdAt), GetChatResponse (thread + messages[]), SendMessageResponse (userMessage + agentMessage nullable)
+- [x] T005 [P] Create chat messages repository in backend/src/repos/chat-messages.repo.ts — insertMessage(client, {id, thread_id, sender_type, message_text, message_json, selection_context}): ChatMessage, findByThreadId(client, threadId, limit): ChatMessage[] ordered by created_at ASC; typed row-to-ChatMessage mapping following chat-threads.repo.ts pattern
+- [x] T006 [P] Create chat validation rules in backend/src/domain/validation/chat-rules.ts — validateMessageText (length limits from config), validateSelectionContext (object shape, array lengths), assertBoardChatWritable (board exists + status=active, throws BOARD_NOT_FOUND or BOARD_ARCHIVED), assertThreadExists (throws CHAT_THREAD_NOT_FOUND)
+- [x] T007 [P] Create agent stub in backend/src/agent/agent-stub.ts — export generateAgentResponse({ boardId, messageText, selectionContext, boardContext? }): Promise<{ text: string, messageJson: object }> returning canned acknowledgment; wrapping in a configurable timeout from AGENT_TIMEOUT_MS; designed as drop-in replacement point for real LLM in S9
+- [x] T008 [P] Create chat API client in frontend/src/api/chat.api.ts — getChatHistory(boardId): Promise<GetChatResponse>, sendMessage(boardId, message, selectionContext?): Promise<SendMessageResponse>; use existing api/client.ts base
+- [x] T009 [P] Add chat types to frontend/src/store/types.ts — ChatMessage interface (id, threadId, senderType, messageText, messageJson, selectionContext, createdAt), ChatState interface (messages: ChatMessage[], sendStatus: 'idle'|'sending'|'error', loadStatus: 'idle'|'loading'|'ready'|'error', draftText: string, lastError: string|null), add chatState to BoardStore interface
 
 **Checkpoint**: Foundation ready — schemas, repo, validation, agent stub, frontend types, and API client all available for endpoint implementation.
 
@@ -53,13 +53,13 @@
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement getChatHistory in backend/src/services/chat.service.ts — withTransaction: load board (assert exists, not deleted), load chat thread (assert exists), load messages via chat-messages.repo.findByThreadId with limit from config, return { thread, messages }
-- [ ] T011 [US1] Implement GET /boards/:boardId/chat handler in backend/src/http/controllers/chat.controller.ts — validate boardId UUID, call chat.service.getChatHistory, return successResponse({ thread, messages }) or errorResponse; handle BOARD_NOT_FOUND (404), CHAT_THREAD_NOT_FOUND (404)
-- [ ] T012 [US1] Register GET /boards/:boardId/chat route in backend/src/http/router.ts — add route before the boardId catch-all GET route
-- [ ] T013 [US1] Add chat state and loadHistory action to frontend/src/store/board.store.ts — initialize chatState with defaults, add loadChatHistory(messages) action that sets chatState.messages and loadStatus, add setChatLoadStatus action, add resetChat in the existing reset() flow
-- [ ] T014 [P] [US1] Create MessageBubble component in frontend/src/components/chat/MessageBubble.tsx — render single message with sender attribution (user right-aligned, agent left-aligned), display messageText, timestamp, visual distinction between user and agent styles (different background colors)
-- [ ] T015 [US1] Create MessageList component in frontend/src/components/chat/MessageList.tsx — render array of ChatMessages using MessageBubble, auto-scroll to bottom on new messages, show empty state when no messages, show loading spinner when loadStatus=loading
-- [ ] T016 [US1] Replace ChatSidebar placeholder with real chat panel in frontend/src/components/layout/ChatSidebar.tsx — remove "Chat coming in S8" placeholder, integrate MessageList, load chat history on mount via useChat hook (T021 in US2) or direct API call, keep existing open/close toggle behavior
+- [x] T010 [US1] Implement getChatHistory in backend/src/services/chat.service.ts — withTransaction: load board (assert exists, not deleted), load chat thread (assert exists), load messages via chat-messages.repo.findByThreadId with limit from config, return { thread, messages }
+- [x] T011 [US1] Implement GET /boards/:boardId/chat handler in backend/src/http/controllers/chat.controller.ts — validate boardId UUID, call chat.service.getChatHistory, return successResponse({ thread, messages }) or errorResponse; handle BOARD_NOT_FOUND (404), CHAT_THREAD_NOT_FOUND (404)
+- [x] T012 [US1] Register GET /boards/:boardId/chat route in backend/src/http/router.ts — add route before the boardId catch-all GET route
+- [x] T013 [US1] Add chat state and loadHistory action to frontend/src/store/board.store.ts — initialize chatState with defaults, add loadChatHistory(messages) action that sets chatState.messages and loadStatus, add setChatLoadStatus action, add resetChat in the existing reset() flow
+- [x] T014 [P] [US1] Create MessageBubble component in frontend/src/components/chat/MessageBubble.tsx — render single message with sender attribution (user right-aligned, agent left-aligned), display messageText, timestamp, visual distinction between user and agent styles (different background colors)
+- [x] T015 [US1] Create MessageList component in frontend/src/components/chat/MessageList.tsx — render array of ChatMessages using MessageBubble, auto-scroll to bottom on new messages, show empty state when no messages, show loading spinner when loadStatus=loading
+- [x] T016 [US1] Replace ChatSidebar placeholder with real chat panel in frontend/src/components/layout/ChatSidebar.tsx — remove "Chat coming in S8" placeholder, integrate MessageList, load chat history on mount via useChat hook (T021 in US2) or direct API call, keep existing open/close toggle behavior
 
 **Checkpoint**: `GET /api/boards/:boardId/chat` returns thread + messages. Chat panel renders message history on board entry. Empty boards show empty state.
 
@@ -73,12 +73,12 @@
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Implement sendMessage in backend/src/services/chat.service.ts — withTransaction: validate board (exists, active, not archived), load thread, validate message text + selection context via chat-rules, persist user message via chat-messages.repo.insertMessage with sender_type=user; then outside transaction: call agent-stub.generateAgentResponse wrapped in try/catch; on success: persist agent message in separate transaction, return { userMessage, agentMessage }; on agent failure: return { userMessage, agentMessage: null } with error info
-- [ ] T018 [US2] Implement POST /boards/:boardId/chat/messages handler in backend/src/http/controllers/chat.controller.ts — parse body with SendMessageRequest schema, call chat.service.sendMessage, return successResponse({ userMessage, agentMessage }) with 200; if agentMessage is null, include error in envelope per contracts/chat-endpoints.md agent failure response shape; handle BOARD_NOT_FOUND (404), BOARD_ARCHIVED (409), VALIDATION_ERROR (422)
-- [ ] T019 [US2] Register POST /boards/:boardId/chat/messages route in backend/src/http/router.ts — no idempotency middleware needed per research.md R4
-- [ ] T020 [US2] Create MessageComposer component in frontend/src/components/chat/MessageComposer.tsx — textarea input with send button, disable send while sendStatus=sending (FR-015), show loading indicator during send, preserve draft text on error (FR-016), clear input on success, submit on Enter key (Shift+Enter for newline)
-- [ ] T021 [US2] Create useChat hook in frontend/src/hooks/useChat.ts — loadHistory(boardId): fetch via chat.api.getChatHistory and update store; sendMessage(boardId, text): set sendStatus=sending, call chat.api.sendMessage, on success append both messages to store + set sendStatus=idle, on error set sendStatus=error + preserve lastError + show ephemeral error; expose messages, sendStatus, loadStatus, draftText, sendMessage, loadHistory
-- [ ] T022 [US2] Integrate MessageComposer and useChat into ChatSidebar in frontend/src/components/layout/ChatSidebar.tsx — wire useChat hook for load/send, render MessageComposer below MessageList, call loadHistory on component mount with boardId, append new messages to list after successful send
+- [x] T017 [US2] Implement sendMessage in backend/src/services/chat.service.ts — withTransaction: validate board (exists, active, not archived), load thread, validate message text + selection context via chat-rules, persist user message via chat-messages.repo.insertMessage with sender_type=user; then outside transaction: call agent-stub.generateAgentResponse wrapped in try/catch; on success: persist agent message in separate transaction, return { userMessage, agentMessage }; on agent failure: return { userMessage, agentMessage: null } with error info
+- [x] T018 [US2] Implement POST /boards/:boardId/chat/messages handler in backend/src/http/controllers/chat.controller.ts — parse body with SendMessageRequest schema, call chat.service.sendMessage, return successResponse({ userMessage, agentMessage }) with 200; if agentMessage is null, include error in envelope per contracts/chat-endpoints.md agent failure response shape; handle BOARD_NOT_FOUND (404), BOARD_ARCHIVED (409), VALIDATION_ERROR (422)
+- [x] T019 [US2] Register POST /boards/:boardId/chat/messages route in backend/src/http/router.ts — no idempotency middleware needed per research.md R4
+- [x] T020 [US2] Create MessageComposer component in frontend/src/components/chat/MessageComposer.tsx — textarea input with send button, disable send while sendStatus=sending (FR-015), show loading indicator during send, preserve draft text on error (FR-016), clear input on success, submit on Enter key (Shift+Enter for newline)
+- [x] T021 [US2] Create useChat hook in frontend/src/hooks/useChat.ts — loadHistory(boardId): fetch via chat.api.getChatHistory and update store; sendMessage(boardId, text): set sendStatus=sending, call chat.api.sendMessage, on success append both messages to store + set sendStatus=idle, on error set sendStatus=error + preserve lastError + show ephemeral error; expose messages, sendStatus, loadStatus, draftText, sendMessage, loadHistory
+- [x] T022 [US2] Integrate MessageComposer and useChat into ChatSidebar in frontend/src/components/layout/ChatSidebar.tsx — wire useChat hook for load/send, render MessageComposer below MessageList, call loadHistory on component mount with boardId, append new messages to list after successful send
 
 **Checkpoint**: Full send/receive flow works end-to-end. User and agent messages persist after reload. Board revision unchanged. Agent failure shows ephemeral error with user message preserved.
 
@@ -92,9 +92,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] Add selection context capture to useChat hook in frontend/src/hooks/useChat.ts — on sendMessage, read ui.selectedNodeIds, ui.selectedEdgeId (convert to array), and board viewport from board store; package as SelectionContext object; pass to chat.api.sendMessage if any selection exists
-- [ ] T024 [P] [US3] Create SelectionBadge component in frontend/src/components/chat/SelectionBadge.tsx — render a subtle label (e.g., "3 nodes, 1 edge selected") derived from selectionContext.selectedNodeIds.length and selectedEdgeIds.length; only render when selectionContext has non-empty arrays; use small muted text styling
-- [ ] T025 [US3] Integrate SelectionBadge into MessageBubble in frontend/src/components/chat/MessageBubble.tsx — render SelectionBadge below message text for messages where selectionContext has content; only show for user messages (agent messages don't carry selection context)
+- [x] T023 [US3] Add selection context capture to useChat hook in frontend/src/hooks/useChat.ts — on sendMessage, read ui.selectedNodeIds, ui.selectedEdgeId (convert to array), and board viewport from board store; package as SelectionContext object; pass to chat.api.sendMessage if any selection exists
+- [x] T024 [P] [US3] Create SelectionBadge component in frontend/src/components/chat/SelectionBadge.tsx — render a subtle label (e.g., "3 nodes, 1 edge selected") derived from selectionContext.selectedNodeIds.length and selectedEdgeIds.length; only render when selectionContext has non-empty arrays; use small muted text styling
+- [x] T025 [US3] Integrate SelectionBadge into MessageBubble in frontend/src/components/chat/MessageBubble.tsx — render SelectionBadge below message text for messages where selectionContext has content; only show for user messages (agent messages don't carry selection context)
 
 **Checkpoint**: Selection context captured on send, persisted in backend, visible as badge on messages in chat history.
 
@@ -108,9 +108,9 @@
 
 ### Implementation for User Story 4
 
-- [ ] T026 [US4] Change chatSidebarOpen default to true in frontend/src/store/board.store.ts — update initial UIState.chatSidebarOpen from false to true so chat panel opens by default on board entry per clarification
-- [ ] T027 [US4] Add loading and error states to ChatSidebar in frontend/src/components/layout/ChatSidebar.tsx — show LoadingSpinner (from shared/) when chatState.loadStatus=loading, show ErrorMessage (from shared/) with retry button when loadStatus=error, show inline error toast when sendStatus=error using chatState.lastError text
-- [ ] T028 [US4] Ensure chat state preserved across panel toggle in frontend/src/store/board.store.ts — verify toggleChatSidebar only changes ui.chatSidebarOpen without clearing chatState.messages; add guard in loadHistory to skip fetch if messages already loaded and loadStatus=ready
+- [x] T026 [US4] Change chatSidebarOpen default to true in frontend/src/store/board.store.ts — update initial UIState.chatSidebarOpen from false to true so chat panel opens by default on board entry per clarification
+- [x] T027 [US4] Add loading and error states to ChatSidebar in frontend/src/components/layout/ChatSidebar.tsx — show LoadingSpinner (from shared/) when chatState.loadStatus=loading, show ErrorMessage (from shared/) with retry button when loadStatus=error, show inline error toast when sendStatus=error using chatState.lastError text
+- [x] T028 [US4] Ensure chat state preserved across panel toggle in frontend/src/store/board.store.ts — verify toggleChatSidebar only changes ui.chatSidebarOpen without clearing chatState.messages; add guard in loadHistory to skip fetch if messages already loaded and loadStatus=ready
 
 **Checkpoint**: Panel open by default. Toggle preserves messages. Loading/error states render correctly. Canvas remains interactive.
 
@@ -124,9 +124,9 @@
 
 ### Implementation for User Story 5
 
-- [ ] T029 [US5] Verify backend lifecycle enforcement in backend/src/services/chat.service.ts — confirm getChatHistory rejects deleted boards (BOARD_NOT_FOUND) but allows archived boards; confirm sendMessage rejects both archived (BOARD_ARCHIVED 409) and deleted (BOARD_NOT_FOUND 404) boards via chat-rules.assertBoardChatWritable
-- [ ] T030 [US5] Disable message composer for archived boards in frontend/src/components/chat/MessageComposer.tsx — accept disabled prop, when board.status=archived render composer in disabled state with explanatory text ("This board is archived. Chat is read-only."); wire disabled prop from ChatSidebar based on board.status from store
-- [ ] T031 [US5] Handle deleted board 404 in useChat hook in frontend/src/hooks/useChat.ts — on loadHistory 404 error, set loadStatus=error with user-friendly message; on sendMessage 409 (BOARD_ARCHIVED), show "Board is read-only" error without retaining draft for retry
+- [x] T029 [US5] Verify backend lifecycle enforcement in backend/src/services/chat.service.ts — confirm getChatHistory rejects deleted boards (BOARD_NOT_FOUND) but allows archived boards; confirm sendMessage rejects both archived (BOARD_ARCHIVED 409) and deleted (BOARD_NOT_FOUND 404) boards via chat-rules.assertBoardChatWritable
+- [x] T030 [US5] Disable message composer for archived boards in frontend/src/components/chat/MessageComposer.tsx — accept disabled prop, when board.status=archived render composer in disabled state with explanatory text ("This board is archived. Chat is read-only."); wire disabled prop from ChatSidebar based on board.status from store
+- [x] T031 [US5] Handle deleted board 404 in useChat hook in frontend/src/hooks/useChat.ts — on loadHistory 404 error, set loadStatus=error with user-friendly message; on sendMessage 409 (BOARD_ARCHIVED), show "Board is read-only" error without retaining draft for retry
 
 **Checkpoint**: Lifecycle rules enforced end-to-end. Archived boards show history + disabled composer. Deleted boards show not-found error.
 
@@ -136,11 +136,11 @@
 
 **Purpose**: Tests, structured logging, and quickstart validation.
 
-- [ ] T032 [P] Write unit tests for chat validation rules in backend/tests/unit/chat-rules.unit.test.ts — test message text length limits (empty, 1 char, 20001 chars), selection context shape validation (valid, missing fields, invalid types), board lifecycle assertions (active, archived, deleted)
-- [ ] T033 Write integration tests for chat endpoints in backend/tests/integration/chat.integration.test.ts — test GET chat (200 with messages, 200 empty, 404 deleted board), POST message (200 with user+agent, 200 with selection context, 409 archived, 404 deleted, 422 empty message, 422 overlong message), verify board revision unchanged after message send
-- [ ] T034 Write contract tests for chat endpoints in backend/tests/contract/chat.contract.test.ts — GET /boards/:boardId/chat response shape matches contracts/chat-endpoints.md, POST /boards/:boardId/chat/messages request/response shapes match contract, agent failure response shape matches contract
-- [ ] T035 [P] Add structured logging for chat operations in backend/src/services/chat.service.ts — log boardId, threadId, messageId, senderType on message persist; log agent call duration and success/failure; log board lifecycle rejections
-- [ ] T036 Run quickstart.md verification — execute all curl commands from specs/009-chat-persistence-board-scoped.../quickstart.md against a running local instance and confirm expected responses
+- [x] T032 [P] Write unit tests for chat validation rules in backend/tests/unit/chat-rules.unit.test.ts — test message text length limits (empty, 1 char, 20001 chars), selection context shape validation (valid, missing fields, invalid types), board lifecycle assertions (active, archived, deleted)
+- [x] T033 Write integration tests for chat endpoints in backend/tests/integration/chat.integration.test.ts — test GET chat (200 with messages, 200 empty, 404 deleted board), POST message (200 with user+agent, 200 with selection context, 409 archived, 404 deleted, 422 empty message, 422 overlong message), verify board revision unchanged after message send
+- [x] T034 Write contract tests for chat endpoints in backend/tests/contract/chat.contract.test.ts — GET /boards/:boardId/chat response shape matches contracts/chat-endpoints.md, POST /boards/:boardId/chat/messages request/response shapes match contract, agent failure response shape matches contract
+- [x] T035 [P] Add structured logging for chat operations in backend/src/services/chat.service.ts — log boardId, threadId, messageId, senderType on message persist; log agent call duration and success/failure; log board lifecycle rejections
+- [x] T036 Run quickstart.md verification — execute all curl commands from specs/009-chat-persistence-board-scoped.../quickstart.md against a running local instance and confirm expected responses
 
 ---
 

@@ -28,4 +28,6 @@ export const env = {
   IDEMPOTENCY_TTL_HOURS: parseIntEnv('IDEMPOTENCY_TTL_HOURS', 24),
   LOG_LEVEL: requireEnv('LOG_LEVEL', 'info'),
   ASSET_STORAGE_PATH: requireEnv('ASSET_STORAGE_PATH', './storage'),
+  AGENT_TIMEOUT_MS: parseIntEnv('AGENT_TIMEOUT_MS', 12000),
+  CHAT_REQUEST_TIMEOUT_MS: parseIntEnv('CHAT_REQUEST_TIMEOUT_MS', 20000),
 } as const;
