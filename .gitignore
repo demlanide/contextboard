@@ -21,5 +21,8 @@ coverage/
 test-results/
 playwright-report/
 
+# Asset storage
+storage/
+
 # Docker
 postgres_data/

@@ -1,5 +1,8 @@
+import { PoolClient } from 'pg';
 import { limits } from '../../config/limits.js';
 import { Node } from '../../schemas/board-state.schemas.js';
+import { findById as findAssetById } from '../../repos/assets.repo.js';
+import { validateAssetForImageNode } from './asset-rules.js';
 
 // ─── Error Classes ───────────────────────────────────────────────────────────
 
@@ -128,4 +131,30 @@ function validateImageContent(content: Record<string, unknown>): void {
   if (!uuidRegex.test(content.assetId)) {
     throw new NodeError('INVALID_CONTENT', 'assetId must be a valid UUID');
   }
+  if (content.caption !== undefined && content.caption !== null) {
+    if (typeof content.caption !== 'string') {
+      throw new NodeError('INVALID_CONTENT', 'caption must be a string');
+    }
+    if (content.caption.length > limits.asset.captionMaxLength) {
+      throw new NodeError(
+        'INVALID_CONTENT',
+        `Caption must be at most ${limits.asset.captionMaxLength} characters`
+      );
+    }
+  }
+}
+
+/**
+ * Async validation for image node content — checks that the referenced
+ * asset exists, is ready, and belongs to the same board.
+ * Call this after validateNodeContent for image nodes.
+ */
+export async function validateImageNodeAsset(
+  client: PoolClient,
+  content: Record<string, unknown>,
+  boardId: string
+): Promise<void> {
+  const assetId = content.assetId as string;
+  const asset = await findAssetById(client, assetId);
+  validateAssetForImageNode(asset, boardId);
 }

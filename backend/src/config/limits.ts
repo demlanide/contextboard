@@ -17,4 +17,16 @@ export const limits = {
     maxOperations: 200,
     minOperations: 1,
   },
+  asset: {
+    imageMaxSizeBytes: 20 * 1024 * 1024,     // 20 MB
+    fileMaxSizeBytes: 50 * 1024 * 1024,       // 50 MB
+    allowedMimeTypes: [
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/gif',
+    ] as readonly string[],
+    thumbnailMaxDim: 400,
+    captionMaxLength: 2_000,
+  },
 } as const;

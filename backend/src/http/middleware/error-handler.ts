@@ -4,6 +4,7 @@ import { BoardError, BoardNotFoundError } from '../../domain/validation/board-ru
 import { NodeError, NodeNotFoundError, NodeLockedError } from '../../domain/validation/node-rules.js';
 import { EdgeError, EdgeNotFoundError, InvalidEdgeReferenceError } from '../../domain/validation/edge-rules.js';
 import { BatchValidationError } from '../../domain/validation/batch-rules.js';
+import { AssetError, AssetNotFoundError, AssetThumbnailNotAvailableError } from '../../domain/validation/asset-rules.js';
 import { errorResponse } from '../../schemas/common.schemas.js';
 import { logger } from '../../obs/logger.js';
 
@@ -42,6 +43,25 @@ export function errorHandler(
 
   if (err instanceof EdgeError) {
     return res.status(422).json(errorResponse(err.code, err.message));
+  }
+
+  // Asset errors
+  if (err instanceof AssetNotFoundError) {
+    return res.status(404).json(errorResponse(err.code, err.message));
+  }
+
+  if (err instanceof AssetThumbnailNotAvailableError) {
+    return res.status(404).json(errorResponse(err.code, err.message));
+  }
+
+  if (err instanceof AssetError) {
+    const statusMap: Record<string, number> = {
+      PAYLOAD_TOO_LARGE: 413,
+      UNSUPPORTED_MEDIA_TYPE: 415,
+      VALIDATION_ERROR: 422,
+    };
+    const status = statusMap[err.code] ?? 422;
+    return res.status(status).json(errorResponse(err.code, err.message));
   }
 
   // Board errors

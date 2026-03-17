@@ -20,6 +20,13 @@ import {
   handleUpdateEdge,
   handleDeleteEdge,
 } from './controllers/edges.controller.js';
+import {
+  handleUploadAsset,
+  handleGetAssetMetadata,
+  handleGetAssetFile,
+  handleGetAssetThumbnail,
+} from './controllers/assets.controller.js';
+import { uploadMiddleware } from './middleware/upload.js';
 
 const router: RouterType = Router();
 
@@ -84,5 +91,16 @@ router.patch(
 );
 
 router.delete('/edges/:edgeId', handleDeleteEdge);
+
+// S8: Asset CRUD
+router.post(
+  '/assets/upload',
+  uploadMiddleware,
+  idempotencyMiddleware('create_asset'),
+  handleUploadAsset
+);
+router.get('/assets/:assetId', handleGetAssetMetadata);
+router.get('/assets/:assetId/file', handleGetAssetFile);
+router.get('/assets/:assetId/thumbnail', handleGetAssetThumbnail);
 
 export { router };

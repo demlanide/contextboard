@@ -12,6 +12,8 @@ import { PreviewEdge } from './edges/PreviewEdge'
 import { ConnectionHandle } from './edges/ConnectionHandle'
 import { EdgeLabelEditor } from './edges/EdgeLabelEditor'
 import { CanvasToolbar } from './CanvasToolbar'
+import { DropZone } from '../upload/DropZone'
+import { useImageUpload } from '@/hooks/useImageUpload'
 import { UndoToast } from '../shared/UndoToast'
 import { ErrorToast } from '../shared/ErrorToast'
 import type { BoardNode } from '@/store/types'
@@ -32,7 +34,7 @@ export function Canvas() {
   const setEditingNodeId = useBoardStore((s) => s.setEditingNodeId)
   const setSelectedEdgeId = useBoardStore((s) => s.setSelectedEdgeId)
 
-  const { panOffset, handlers } = useCanvasPan()
+  const { panOffset, isPanning, handlers } = useCanvasPan()
   const { createNodeAtPosition, deleteNodeWithUndo } = useNodeMutations()
   const { batchCreateNodes, batchDeleteNodes } = useBatchNodeMutations()
   const batchMutationStatus = useBoardStore((s) => s.batchMutation.status)
@@ -43,6 +45,7 @@ export function Canvas() {
     onError: (message) => setEdgeError(message),
   })
 
+  const { startUpload: dropUpload } = useImageUpload()
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null)
 
   const handleEdgeConnect = useCallback(
@@ -213,8 +216,14 @@ export function Canvas() {
   return (
     <div
       ref={containerRef}
-      className="flex-1 bg-gray-50 overflow-hidden relative min-h-0"
-      style={{ cursor: placementMode ? 'crosshair' : connectionDrag ? 'crosshair' : undefined }}
+      className="flex-1 overflow-hidden relative min-h-0"
+      style={{
+        cursor: placementMode ? 'crosshair' : connectionDrag ? 'crosshair' : isPanning ? 'grabbing' : 'grab',
+        backgroundColor: '#f8f9fa',
+        backgroundImage: 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
+        backgroundSize: '24px 24px',
+        backgroundPosition: `${panOffset.x % 24}px ${panOffset.y % 24}px`,
+      }}
       {...handlers}
       onPointerMove={(e) => {
         handlers.onPointerMove?.(e)
@@ -226,6 +235,11 @@ export function Canvas() {
       }}
     >
       <CanvasToolbar />
+
+      <DropZone
+        onFileDrop={(file, x, y) => dropUpload(file, x, y)}
+        panOffset={panOffset}
+      />
 
       <div
         className="absolute inset-0"

@@ -7,18 +7,21 @@ interface PanOffset {
 
 export function useCanvasPan() {
   const [panOffset, setPanOffset] = useState<PanOffset>({ x: 0, y: 0 })
+  const [isPanningState, setIsPanningState] = useState(false)
   const isPanning = useRef(false)
   const startPoint = useRef({ x: 0, y: 0 })
   const startOffset = useRef({ x: 0, y: 0 })
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      // Only pan on direct canvas clicks (not on nodes)
-      if (e.target !== e.currentTarget) return
+      // Only pan on canvas background clicks (not on nodes or interactive elements)
+      const target = e.target as HTMLElement
+      if (target.closest('[data-node-id]') || target.closest('[data-resize-handle]')) return
       isPanning.current = true
+      setIsPanningState(true)
       startPoint.current = { x: e.clientX, y: e.clientY }
       startOffset.current = { ...panOffset }
-      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     },
     [panOffset],
   )
@@ -35,10 +38,12 @@ export function useCanvasPan() {
 
   const onPointerUp = useCallback(() => {
     isPanning.current = false
+    setIsPanningState(false)
   }, [])
 
   return {
     panOffset,
+    isPanning: isPanningState,
     handlers: { onPointerDown, onPointerMove, onPointerUp },
   }
 }

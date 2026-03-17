@@ -39,6 +39,7 @@ export interface BoardState {
   board: import('./board.schemas.js').Board;
   nodes: Node[];
   edges: Edge[];
+  assets: import('./asset.schemas.js').AssetResponse[];
   chatThread: import('./board.schemas.js').ChatThread;
   lastOperationRevision: number;
 }

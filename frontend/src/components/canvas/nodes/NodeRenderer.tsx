@@ -2,6 +2,7 @@ import type { BoardNode } from '@/store/types'
 import { StickyNode } from './StickyNode'
 import { TextNode } from './TextNode'
 import { ShapeNode } from './ShapeNode'
+import { ImageNode } from './ImageNode'
 
 interface NodeRendererProps {
   node: BoardNode
@@ -15,6 +16,8 @@ export function NodeRenderer({ node }: NodeRendererProps) {
       return <TextNode node={node} />
     case 'shape':
       return <ShapeNode node={node} />
+    case 'image':
+      return <ImageNode node={node} />
     default:
       return null
   }

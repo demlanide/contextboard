@@ -26,6 +26,12 @@ vi.mock('../../src/repos/edges.repo.js', () => ({
 vi.mock('../../src/repos/chat-threads.repo.js', () => ({
   findByBoardId: vi.fn(),
 }));
+vi.mock('../../src/repos/assets.repo.js', () => ({
+  findByBoardId: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('../../src/schemas/asset.schemas.js', () => ({
+  mapAssetToResponse: vi.fn((row: unknown) => row),
+}));
 
 import { findByIdExcludingDeleted } from '../../src/repos/boards.repo.js';
 import { findActiveByBoardId as findActiveNodes } from '../../src/repos/nodes.repo.js';

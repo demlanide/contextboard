@@ -96,6 +96,25 @@ export interface SyncError {
   retryable: boolean
 }
 
+export interface BoardAsset {
+  id: string
+  boardId: string | null
+  kind: string
+  mimeType: string | null
+  originalFilename: string | null
+  url: string
+  thumbnailUrl: string | null
+  fileSizeBytes: number | null
+  width: number | null
+  height: number | null
+  processingStatus: string
+  extractedText: string | null
+  aiCaption: string | null
+  metadata: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
 export interface BoardListItem {
   id: string
   title: string
@@ -119,6 +138,7 @@ export interface BoardStore {
   edgesById: Record<string, BoardEdge>
   nodeOrder: string[]
   edgeOrder: string[]
+  assetsById: Record<string, BoardAsset>
   chatThread: ChatThreadRef | null
   pendingNodes: Record<string, PendingNode>
   nodeMutationStatus: Record<string, 'pending' | 'confirmed' | 'failed'>
@@ -127,6 +147,7 @@ export interface BoardStore {
   sync: SyncState
 
   hydrate: (data: HydrateBoardData) => void
+  addAsset: (asset: BoardAsset) => void
   reset: () => void
   setHydrateStatus: (status: SyncState['hydrateStatus']) => void
   setError: (error: SyncError) => void
@@ -191,5 +212,6 @@ export interface HydrateBoardData {
   board: BoardMeta
   nodes: BoardNode[]
   edges: BoardEdge[]
+  assets?: BoardAsset[]
   chatThread: ChatThreadRef | null
 }

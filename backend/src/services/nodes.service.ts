@@ -6,6 +6,7 @@ import {
   assertNodeExists,
   assertNodeNotLocked,
   validateNodeContent,
+  validateImageNodeAsset,
 } from '../domain/validation/node-rules.js';
 import { applyMergePatch } from '../domain/patch/merge-patch.js';
 import { buildOperation } from '../domain/operations/operation-factory.js';
@@ -27,6 +28,11 @@ export async function createNodeInTx(
   data: CreateNodeRequest
 ): Promise<Node> {
   validateNodeContent(data.type, data.content);
+
+  // Async asset validation for image nodes
+  if (data.type === 'image') {
+    await validateImageNodeAsset(client, data.content, board.id);
+  }
 
   const node = await insertNode(client, {
     boardId: board.id,
@@ -87,6 +93,15 @@ export async function updateNodeInTx(
   // Validate merged content
   const finalContent = (fieldsToUpdate.content ?? node.content) as Record<string, unknown>;
   validateNodeContent(node.type, finalContent);
+
+  // Async asset validation for image nodes when assetId changes
+  if (node.type === 'image' && patch.content !== undefined) {
+    const previousAssetId = (node.content as Record<string, unknown>).assetId;
+    const newAssetId = finalContent.assetId;
+    if (newAssetId !== previousAssetId) {
+      await validateImageNodeAsset(client, finalContent, node.boardId);
+    }
+  }
 
   const updatedNode = await updateNodeRepo(client, nodeId, fieldsToUpdate);
 

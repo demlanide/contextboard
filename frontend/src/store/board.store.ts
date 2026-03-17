@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { BoardStore, BoardNode, BoardEdge, BatchMutationState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState } from './types'
+import type { BoardStore, BoardNode, BoardEdge, BoardAsset, BatchMutationState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState } from './types'
 
 const INITIAL_BATCH: BatchMutationState = {
   status: 'idle',
@@ -26,6 +26,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   edgesById: {},
   nodeOrder: [],
   edgeOrder: [],
+  assetsById: {},
   chatThread: null,
   pendingNodes: {},
   nodeMutationStatus: {},
@@ -48,6 +49,13 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       edgeOrder.push(edge.id)
     }
 
+    const assetsById: Record<string, BoardAsset> = {}
+    if (data.assets) {
+      for (const asset of data.assets) {
+        assetsById[asset.id] = asset
+      }
+    }
+
     set({
       boardId: data.board.id,
       board: data.board,
@@ -55,6 +63,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       edgesById,
       nodeOrder,
       edgeOrder,
+      assetsById,
       chatThread: data.chatThread,
       sync: {
         hydrateStatus: 'ready',
@@ -64,6 +73,11 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     })
   },
 
+  addAsset: (asset: BoardAsset) =>
+    set((state) => ({
+      assetsById: { ...state.assetsById, [asset.id]: asset },
+    })),
+
   reset: () =>
     set({
       boardId: null,
@@ -72,6 +86,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       edgesById: {},
       nodeOrder: [],
       edgeOrder: [],
+      assetsById: {},
       chatThread: null,
       pendingNodes: {},
       nodeMutationStatus: {},

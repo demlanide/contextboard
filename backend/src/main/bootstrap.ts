@@ -1,7 +1,14 @@
+import { resolve } from 'node:path';
 import { createApp } from './app.js';
 import { env } from '../config/env.js';
 import { pool } from '../db/pool.js';
 import { logger } from '../obs/logger.js';
+import { LocalAssetStorage } from '../assets/storage/local-storage.js';
+import { setAssetStorage } from '../services/assets.service.js';
+
+// Initialize asset storage
+const storagePath = resolve(env.ASSET_STORAGE_PATH);
+setAssetStorage(new LocalAssetStorage(storagePath));
 
 const app = createApp();
 
