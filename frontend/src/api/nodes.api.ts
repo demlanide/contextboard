@@ -13,6 +13,32 @@ interface DeleteNodeResponseData {
   boardRevision: number
 }
 
+// ─── Batch Types ──────────────────────────────────────────────────────────────
+
+export type BatchOperationItem =
+  | { type: 'create'; tempId: string; node: {
+      type: BoardNode['type']
+      x: number; y: number; width: number; height: number
+      content: Record<string, unknown>
+      style?: Record<string, unknown>
+      metadata?: Record<string, unknown>
+    } }
+  | { type: 'update'; nodeId: string; changes: Record<string, unknown> }
+  | { type: 'delete'; nodeId: string }
+
+export interface BatchDeletedEntry {
+  id: string
+  type: 'node' | 'edge'
+}
+
+export interface BatchResponse {
+  batchId: string
+  boardRevision: number
+  created: (BoardNode & { tempId: string })[]
+  updated: BoardNode[]
+  deleted: BatchDeletedEntry[]
+}
+
 export async function createNode(
   boardId: string,
   body: {
@@ -46,5 +72,15 @@ export async function updateNode(
 export async function deleteNode(nodeId: string) {
   return apiRequest<DeleteNodeResponseData>(`/nodes/${nodeId}`, {
     method: 'DELETE',
+  })
+}
+
+export async function batchNodeMutations(
+  boardId: string,
+  operations: BatchOperationItem[],
+) {
+  return apiRequest<BatchResponse>(`/boards/${boardId}/nodes/batch`, {
+    method: 'POST',
+    body: JSON.stringify({ operations }),
   })
 }

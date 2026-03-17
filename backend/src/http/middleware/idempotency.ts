@@ -15,12 +15,14 @@ function buildScopeKey(operation: string, boardId: string | undefined, key: stri
 
 export function idempotencyMiddleware(operation: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+    const rawKey = req.headers['idempotency-key'];
+    const idempotencyKey = typeof rawKey === 'string' ? rawKey : undefined;
     if (!idempotencyKey) {
       return next();
     }
 
-    const boardId = req.params['boardId'];
+    const boardIdParam = req.params['boardId'];
+    const boardId = typeof boardIdParam === 'string' ? boardIdParam : boardIdParam?.[0];
     const scopeKey = buildScopeKey(operation, boardId, idempotencyKey);
     const fp = fingerprint(req.body);
 

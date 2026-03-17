@@ -5,14 +5,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BoardNotFoundError } from '../../src/domain/validation/board-rules.js';
 
-// ─── Mocks ────────────────────────────────────────────────────────────────────
+// ─── Mocks (hoisted so vi.mock factories can reference them) ─────────────────
 
-const mockQuery = vi.fn();
-const mockRelease = vi.fn();
-const mockClient = {
-  query: mockQuery,
-  release: mockRelease,
-};
+const { mockQuery, mockRelease, mockClient, mockFindBoardById, mockUpdateBoard, mockInsertOperation } = vi.hoisted(() => {
+  const mockQuery = vi.fn();
+  const mockRelease = vi.fn();
+  const mockClient = { query: mockQuery, release: mockRelease };
+  const mockFindBoardById = vi.fn();
+  const mockUpdateBoard = vi.fn();
+  const mockInsertOperation = vi.fn();
+  return { mockQuery, mockRelease, mockClient, mockFindBoardById, mockUpdateBoard, mockInsertOperation };
+});
 
 vi.mock('../../src/db/pool.js', () => ({
   pool: {
@@ -20,15 +23,10 @@ vi.mock('../../src/db/pool.js', () => ({
   },
 }));
 
-const mockFindBoardById = vi.fn();
-const mockUpdateBoard = vi.fn();
-
 vi.mock('../../src/repos/boards.repo.js', () => ({
   findBoardById: (...args: unknown[]) => mockFindBoardById(...args),
   updateBoard: (...args: unknown[]) => mockUpdateBoard(...args),
 }));
-
-const mockInsertOperation = vi.fn();
 
 vi.mock('../../src/repos/operations.repo.js', () => ({
   insertOperation: (...args: unknown[]) => mockInsertOperation(...args),

@@ -104,6 +104,14 @@ export interface BoardListItem {
   createdAt: string
 }
 
+export interface BatchMutationState {
+  status: 'idle' | 'pending' | 'error'
+  affectedNodeIds: string[]
+  snapshots: Record<string, BoardNode>
+  edgeSnapshots: Record<string, BoardEdge>
+  error: string | null
+}
+
 export interface BoardStore {
   boardId: string | null
   board: BoardMeta | null
@@ -114,6 +122,7 @@ export interface BoardStore {
   chatThread: ChatThreadRef | null
   pendingNodes: Record<string, PendingNode>
   nodeMutationStatus: Record<string, 'pending' | 'confirmed' | 'failed'>
+  batchMutation: BatchMutationState
   ui: UIState
   sync: SyncState
 
@@ -146,6 +155,17 @@ export interface BoardStore {
 
   // Mutation status
   clearNodeMutationStatus: (nodeId: string) => void
+
+  // Batch mutations
+  batchMoveOptimistic: (moves: Array<{ nodeId: string; x: number; y: number }>) => void
+  batchCreateOptimistic: (items: Array<{ tempId: string; node: Partial<BoardNode> }>) => void
+  batchDeleteOptimistic: (nodeIds: string[]) => { nodeSnapshots: Record<string, BoardNode>; edgeSnapshots: Record<string, BoardEdge> }
+  reconcileBatch: (response: { boardRevision: number; created: (BoardNode & { tempId: string })[]; updated: BoardNode[]; deleted: Array<{ id: string; type: 'node' | 'edge' }> }) => void
+  rollbackBatch: () => void
+  rollbackBatchDelete: (nodeSnapshots: Record<string, BoardNode>, edgeSnapshots: Record<string, BoardEdge>) => void
+  confirmBatchCreate: (response: { boardRevision: number; created: (BoardNode & { tempId: string })[] }) => void
+  rollbackBatchCreate: () => void
+  resetBatchMutation: () => void
 
   // Edge CRUD actions
   setSelectedEdgeId: (id: string | null) => void

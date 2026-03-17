@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import { BoardError, BoardNotFoundError } from '../../domain/validation/board-rules.js';
 import { NodeError, NodeNotFoundError, NodeLockedError } from '../../domain/validation/node-rules.js';
 import { EdgeError, EdgeNotFoundError, InvalidEdgeReferenceError } from '../../domain/validation/edge-rules.js';
+import { BatchValidationError } from '../../domain/validation/batch-rules.js';
 import { errorResponse } from '../../schemas/common.schemas.js';
 import { logger } from '../../obs/logger.js';
 
@@ -12,6 +13,11 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
+  // Batch validation errors
+  if (err instanceof BatchValidationError) {
+    return res.status(422).json(errorResponse(err.code, err.message, err.details));
+  }
+
   // Node errors (before generic BoardError catch)
   if (err instanceof NodeNotFoundError) {
     return res.status(404).json(errorResponse(err.code, err.message));

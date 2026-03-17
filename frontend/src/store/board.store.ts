@@ -1,5 +1,13 @@
 import { create } from 'zustand'
-import type { BoardStore, BoardNode, BoardEdge, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState } from './types'
+import type { BoardStore, BoardNode, BoardEdge, BatchMutationState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState } from './types'
+
+const INITIAL_BATCH: BatchMutationState = {
+  status: 'idle',
+  affectedNodeIds: [],
+  snapshots: {},
+  edgeSnapshots: {},
+  error: null,
+}
 
 const INITIAL_UI: UIState = {
   chatSidebarOpen: true,
@@ -21,6 +29,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   chatThread: null,
   pendingNodes: {},
   nodeMutationStatus: {},
+  batchMutation: INITIAL_BATCH,
   ui: INITIAL_UI,
   sync: INITIAL_SYNC,
 
@@ -66,6 +75,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       chatThread: null,
       pendingNodes: {},
       nodeMutationStatus: {},
+      batchMutation: INITIAL_BATCH,
       ui: INITIAL_UI,
       sync: INITIAL_SYNC,
     }),
@@ -227,6 +237,199 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       const { [nodeId]: _, ...remaining } = state.nodeMutationStatus
       return { nodeMutationStatus: remaining }
     }),
+
+  // ─── Batch Mutations ─────────────────────────────────────────────────────
+
+  batchMoveOptimistic: (moves) =>
+    set((state) => {
+      const snapshots: Record<string, BoardNode> = {}
+      const newNodesById = { ...state.nodesById }
+      const affectedNodeIds: string[] = []
+
+      for (const move of moves) {
+        const node = state.nodesById[move.nodeId]
+        if (!node) continue
+        snapshots[move.nodeId] = node
+        affectedNodeIds.push(move.nodeId)
+        newNodesById[move.nodeId] = { ...node, x: move.x, y: move.y }
+      }
+
+      return {
+        nodesById: newNodesById,
+        batchMutation: {
+          status: 'pending',
+          affectedNodeIds,
+          snapshots,
+          edgeSnapshots: {},
+          error: null,
+        },
+      }
+    }),
+
+  batchCreateOptimistic: (items) =>
+    set((state) => {
+      const newPending = { ...state.pendingNodes }
+      const affectedNodeIds: string[] = []
+
+      for (const item of items) {
+        newPending[item.tempId] = { tempId: item.tempId, node: item.node, status: 'pending' }
+        affectedNodeIds.push(item.tempId)
+      }
+
+      return {
+        pendingNodes: newPending,
+        batchMutation: {
+          status: 'pending',
+          affectedNodeIds,
+          snapshots: {},
+          edgeSnapshots: {},
+          error: null,
+        },
+      }
+    }),
+
+  batchDeleteOptimistic: (nodeIds) => {
+    const state = get()
+    const nodeSnapshots: Record<string, BoardNode> = {}
+    const edgeSnapshots: Record<string, BoardEdge> = {}
+    const edgeIdsToRemove = new Set<string>()
+
+    for (const nodeId of nodeIds) {
+      const node = state.nodesById[nodeId]
+      if (node) nodeSnapshots[nodeId] = node
+    }
+
+    for (const [edgeId, edge] of Object.entries(state.edgesById)) {
+      if (nodeIds.includes(edge.sourceNodeId) || nodeIds.includes(edge.targetNodeId)) {
+        edgeSnapshots[edgeId] = edge
+        edgeIdsToRemove.add(edgeId)
+      }
+    }
+
+    set({
+      nodesById: Object.fromEntries(
+        Object.entries(state.nodesById).filter(([id]) => !nodeIds.includes(id)),
+      ),
+      nodeOrder: state.nodeOrder.filter((id) => !nodeIds.includes(id)),
+      edgesById: Object.fromEntries(
+        Object.entries(state.edgesById).filter(([id]) => !edgeIdsToRemove.has(id)),
+      ),
+      edgeOrder: state.edgeOrder.filter((id) => !edgeIdsToRemove.has(id)),
+      batchMutation: {
+        status: 'pending',
+        affectedNodeIds: nodeIds,
+        snapshots: nodeSnapshots,
+        edgeSnapshots,
+        error: null,
+      },
+    })
+
+    return { nodeSnapshots, edgeSnapshots }
+  },
+
+  reconcileBatch: (response) =>
+    set((state) => {
+      const newNodesById = { ...state.nodesById }
+      const newEdgesById = { ...state.edgesById }
+      let newNodeOrder = [...state.nodeOrder]
+      let newEdgeOrder = [...state.edgeOrder]
+      const newPending = { ...state.pendingNodes }
+
+      // Handle created nodes (tempId → realId)
+      for (const created of response.created) {
+        const { tempId, ...node } = created
+        delete newPending[tempId]
+        newNodesById[node.id] = node
+        newNodeOrder = newNodeOrder.filter((id) => id !== tempId)
+        newNodeOrder.push(node.id)
+      }
+
+      // Handle updated nodes
+      for (const updated of response.updated) {
+        newNodesById[updated.id] = updated
+      }
+
+      // Handle deleted entries
+      for (const entry of response.deleted) {
+        if (entry.type === 'node') {
+          delete newNodesById[entry.id]
+          newNodeOrder = newNodeOrder.filter((id) => id !== entry.id)
+        } else if (entry.type === 'edge') {
+          delete newEdgesById[entry.id]
+          newEdgeOrder = newEdgeOrder.filter((id) => id !== entry.id)
+        }
+      }
+
+      return {
+        nodesById: newNodesById,
+        edgesById: newEdgesById,
+        nodeOrder: newNodeOrder,
+        edgeOrder: newEdgeOrder,
+        pendingNodes: newPending,
+        board: state.board ? { ...state.board, revision: response.boardRevision } : null,
+        sync: { ...state.sync, lastSyncedRevision: response.boardRevision },
+        batchMutation: INITIAL_BATCH,
+      }
+    }),
+
+  rollbackBatch: () =>
+    set((state) => {
+      const newNodesById = { ...state.nodesById }
+      for (const [nodeId, snapshot] of Object.entries(state.batchMutation.snapshots)) {
+        newNodesById[nodeId] = snapshot
+      }
+      return {
+        nodesById: newNodesById,
+        batchMutation: { ...state.batchMutation, status: 'error' },
+      }
+    }),
+
+  rollbackBatchDelete: (nodeSnapshots, edgeSnapshots) =>
+    set((state) => ({
+      nodesById: { ...state.nodesById, ...nodeSnapshots },
+      nodeOrder: [...state.nodeOrder, ...Object.keys(nodeSnapshots)],
+      edgesById: { ...state.edgesById, ...edgeSnapshots },
+      edgeOrder: [...state.edgeOrder, ...Object.keys(edgeSnapshots)],
+      batchMutation: { ...state.batchMutation, status: 'error' },
+    })),
+
+  confirmBatchCreate: (response) =>
+    set((state) => {
+      const newNodesById = { ...state.nodesById }
+      const newPending = { ...state.pendingNodes }
+      let newNodeOrder = [...state.nodeOrder]
+
+      for (const created of response.created) {
+        const { tempId, ...node } = created
+        delete newPending[tempId]
+        newNodesById[node.id] = node
+        newNodeOrder.push(node.id)
+      }
+
+      return {
+        nodesById: newNodesById,
+        nodeOrder: newNodeOrder,
+        pendingNodes: newPending,
+        board: state.board ? { ...state.board, revision: response.boardRevision } : null,
+        sync: { ...state.sync, lastSyncedRevision: response.boardRevision },
+        batchMutation: INITIAL_BATCH,
+      }
+    }),
+
+  rollbackBatchCreate: () =>
+    set((state) => {
+      const newPending = { ...state.pendingNodes }
+      for (const tempId of state.batchMutation.affectedNodeIds) {
+        delete newPending[tempId]
+      }
+      return {
+        pendingNodes: newPending,
+        batchMutation: { ...state.batchMutation, status: 'error' },
+      }
+    }),
+
+  resetBatchMutation: () =>
+    set({ batchMutation: INITIAL_BATCH }),
 
   // ─── Edge CRUD UI Actions ────────────────────────────────────────────────
 

@@ -5,11 +5,13 @@ import {
   CreateNodeRequestSchema,
   UpdateNodeRequestSchema,
 } from '../../schemas/node.schemas.js';
+import { BatchRequestSchema } from '../../schemas/batch.schemas.js';
 import {
   createNode,
   updateNode,
   deleteNode,
 } from '../../services/nodes.service.js';
+import { executeBatch } from '../../services/batch.service.js';
 
 // POST /api/boards/:boardId/nodes
 export async function handleCreateNode(req: Request, res: Response, next: NextFunction) {
@@ -57,6 +59,21 @@ export async function handleDeleteNode(req: Request, res: Response, next: NextFu
         boardRevision: result.boardRevision,
       })
     );
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/boards/:boardId/nodes/batch
+export async function handleBatchNodeMutations(req: Request, res: Response, next: NextFunction) {
+  const boardIdResult = uuidSchema.safeParse(req.params['boardId']);
+  if (!boardIdResult.success) {
+    return res.status(422).json(errorResponse('VALIDATION_ERROR', 'boardId must be a valid UUID'));
+  }
+  try {
+    const body = BatchRequestSchema.parse(req.body);
+    const result = await executeBatch(boardIdResult.data, body.operations);
+    return res.status(200).json(successResponse(result));
   } catch (err) {
     next(err);
   }

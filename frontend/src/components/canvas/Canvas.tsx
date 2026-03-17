@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBoardStore } from '@/store/board.store'
 import { useCanvasPan } from '@/hooks/useCanvasPan'
 import { useNodeMutations } from '@/hooks/useNodeMutations'
+import { useBatchNodeMutations } from '@/hooks/useBatchNodeMutations'
 import { useEdgeConnection } from '@/hooks/useEdgeConnection'
 import { useEdgeMutations } from '@/hooks/useEdgeMutations'
 import { NodeWrapper } from './nodes/NodeWrapper'
@@ -33,6 +34,10 @@ export function Canvas() {
 
   const { panOffset, handlers } = useCanvasPan()
   const { createNodeAtPosition, deleteNodeWithUndo } = useNodeMutations()
+  const { batchCreateNodes, batchDeleteNodes } = useBatchNodeMutations()
+  const batchMutationStatus = useBoardStore((s) => s.batchMutation.status)
+  const batchMutationError = useBoardStore((s) => s.batchMutation.error)
+  const resetBatchMutation = useBoardStore((s) => s.resetBatchMutation)
   const [edgeError, setEdgeError] = useState<string | null>(null)
   const { createEdge: createEdgeMutation, updateEdge: updateEdgeMutation, deleteEdge: deleteEdgeMutation } = useEdgeMutations({
     onError: (message) => setEdgeError(message),
@@ -81,7 +86,17 @@ export function Canvas() {
   const handleNodeClick = useCallback(
     (nodeId: string, e: React.MouseEvent) => {
       e.stopPropagation()
-      setSelectedNodeIds([nodeId])
+      if (e.shiftKey) {
+        // Toggle node in multi-selection
+        const current = useBoardStore.getState().ui.selectedNodeIds
+        if (current.includes(nodeId)) {
+          setSelectedNodeIds(current.filter((id) => id !== nodeId))
+        } else {
+          setSelectedNodeIds([...current, nodeId])
+        }
+      } else {
+        setSelectedNodeIds([nodeId])
+      }
     },
     [setSelectedNodeIds],
   )
@@ -126,15 +141,44 @@ export function Canvas() {
     [editingEdgeId, updateEdgeMutation],
   )
 
-  // Delete key handler
+  // Keyboard handlers (Delete, Ctrl+D)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Don't intercept if editing text
-        const target = e.target as HTMLElement
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
+      // Don't intercept if editing text
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
 
-        if (selectedNodeIds.length > 0 && isActive) {
+      // Ctrl/Cmd+D: Duplicate selected nodes
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && selectedNodeIds.length > 0 && isActive) {
+        e.preventDefault()
+        const state = useBoardStore.getState()
+        const items = selectedNodeIds
+          .map((id) => state.nodesById[id])
+          .filter(Boolean)
+          .map((node) => ({
+            tempId: crypto.randomUUID(),
+            type: node.type,
+            x: node.x + 20,
+            y: node.y + 20,
+            width: node.width,
+            height: node.height,
+            content: { ...node.content },
+            style: { ...node.style },
+            metadata: { ...node.metadata },
+          }))
+        if (items.length > 0) {
+          batchCreateNodes(items)
+        }
+        return
+      }
+
+      // Delete/Backspace: Delete selected nodes or edge
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedNodeIds.length > 1 && isActive) {
+          // Multi-delete via batch
+          batchDeleteNodes(selectedNodeIds)
+          setSelectedNodeIds([])
+        } else if (selectedNodeIds.length === 1 && isActive) {
           const nodeId = selectedNodeIds[0]
           const { undoFn } = deleteNodeWithUndo(nodeId)
           if (undoFn) {
@@ -164,7 +208,7 @@ export function Canvas() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedNodeIds, selectedEdgeId, isActive, deleteNodeWithUndo, deleteEdgeMutation, setSelectedNodeIds, setSelectedEdgeId])
+  }, [selectedNodeIds, selectedEdgeId, isActive, deleteNodeWithUndo, deleteEdgeMutation, batchCreateNodes, batchDeleteNodes, setSelectedNodeIds, setSelectedEdgeId])
 
   return (
     <div
@@ -294,6 +338,13 @@ export function Canvas() {
         <ErrorToast
           message={edgeError}
           onDismiss={() => setEdgeError(null)}
+        />
+      )}
+
+      {batchMutationStatus === 'error' && (
+        <ErrorToast
+          message={batchMutationError ?? 'Batch operation failed. Changes have been reverted.'}
+          onDismiss={resetBatchMutation}
         />
       )}
     </div>

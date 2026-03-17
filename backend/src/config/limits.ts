@@ -13,4 +13,8 @@ export const limits = {
   edge: {
     label: { max: 1_000 },
   },
+  batch: {
+    maxOperations: 200,
+    minOperations: 1,
+  },
 } as const;

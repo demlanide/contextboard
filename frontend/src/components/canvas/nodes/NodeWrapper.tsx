@@ -2,6 +2,7 @@ import { useBoardStore } from '@/store/board.store'
 import { useNodeDrag } from '@/hooks/useNodeDrag'
 import { useNodeResize } from '@/hooks/useNodeResize'
 import { useNodeMutations } from '@/hooks/useNodeMutations'
+import { useBatchNodeMutations } from '@/hooks/useBatchNodeMutations'
 import type { BoardNode } from '@/store/types'
 
 interface NodeWrapperProps {
@@ -22,11 +23,20 @@ export function NodeWrapper({
   onDoubleClick,
 }: NodeWrapperProps) {
   const mutationStatus = useBoardStore((s) => s.nodeMutationStatus[node.id])
+  const batchStatus = useBoardStore((s) => s.batchMutation.status)
+  const isAffectedByBatch = useBoardStore((s) => s.batchMutation.affectedNodeIds.includes(node.id))
   const { updateNodePosition, updateNodeDimensions } = useNodeMutations()
+  const { batchMoveNodes } = useBatchNodeMutations()
 
-  const { dragHandlers } = useNodeDrag(node.id, (_id, x, y) => {
-    updateNodePosition(node.id, x, y)
-  })
+  const { dragHandlers } = useNodeDrag(
+    node.id,
+    (_id, x, y) => {
+      updateNodePosition(node.id, x, y)
+    },
+    (moves) => {
+      batchMoveNodes(moves)
+    },
+  )
 
   const { resizeHandlers } = useNodeResize(node.id, (_id, w, h) => {
     updateNodeDimensions(node.id, w, h)
@@ -35,8 +45,8 @@ export function NodeWrapper({
   if (node.hidden) return null
 
   const opacity = (node.style.opacity as number) ?? 1
-  const isPending = mutationStatus === 'pending'
-  const isFailed = mutationStatus === 'failed'
+  const isPending = mutationStatus === 'pending' || (batchStatus === 'pending' && isAffectedByBatch)
+  const isFailed = mutationStatus === 'failed' || (batchStatus === 'error' && isAffectedByBatch)
 
   // Connection drag feedback
   const isDragSource = connectionDragSourceId === node.id

@@ -1,10 +1,10 @@
-import express from 'express';
+import express, { type Express } from 'express';
 import { router } from '../http/router.js';
 import { requestIdMiddleware } from '../http/middleware/request-id.js';
 import { errorHandler } from '../http/middleware/error-handler.js';
 import { recordRequestDuration } from '../obs/metrics.js';
 
-export function createApp() {
+export function createApp(): Express {
   const app = express();
 
   app.use(express.json({ limit: '1mb', type: ['application/json', 'application/merge-patch+json'] }));

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Router as RouterType } from 'express';
 import { idempotencyMiddleware } from './middleware/idempotency.js';
 import { requireMergePatch } from './middleware/content-type.js';
 import {
@@ -13,6 +13,7 @@ import {
   handleCreateNode,
   handleUpdateNode,
   handleDeleteNode,
+  handleBatchNodeMutations,
 } from './controllers/nodes.controller.js';
 import {
   handleCreateEdge,
@@ -20,7 +21,7 @@ import {
   handleDeleteEdge,
 } from './controllers/edges.controller.js';
 
-const router = Router();
+const router: RouterType = Router();
 
 // US1: Create Board
 router.post('/boards', idempotencyMiddleware('create_board'), handleCreateBoard);
@@ -60,6 +61,13 @@ router.patch(
 );
 
 router.delete('/nodes/:nodeId', handleDeleteNode);
+
+// S7: Batch Node Mutations
+router.post(
+  '/boards/:boardId/nodes/batch',
+  idempotencyMiddleware('batch_node_mutations'),
+  handleBatchNodeMutations
+);
 
 // S6: Edge CRUD
 router.post(

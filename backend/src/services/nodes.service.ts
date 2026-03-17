@@ -1,4 +1,6 @@
-import { withBoardMutation } from '../db/tx.js';
+import { PoolClient } from 'pg';
+import { withBoardMutation, BoardMutationContext } from '../db/tx.js';
+import { Board } from '../schemas/board.schemas.js';
 import { assertBoardEditable } from '../domain/validation/board-rules.js';
 import {
   assertNodeExists,
@@ -17,6 +19,106 @@ import { softDeleteByNodeId } from '../repos/edges.repo.js';
 import { Node } from '../schemas/board-state.schemas.js';
 import { CreateNodeRequest, UpdateNodeRequest } from '../schemas/node.schemas.js';
 
+// ─── In-Transaction Helpers (shared by single-node and batch flows) ─────────
+
+export async function createNodeInTx(
+  client: PoolClient,
+  board: Board,
+  data: CreateNodeRequest
+): Promise<Node> {
+  validateNodeContent(data.type, data.content);
+
+  const node = await insertNode(client, {
+    boardId: board.id,
+    type: data.type,
+    x: data.x,
+    y: data.y,
+    width: data.width,
+    height: data.height,
+    content: data.content,
+    parentId: data.parentId,
+    rotation: data.rotation,
+    zIndex: data.zIndex,
+    style: data.style,
+    metadata: data.metadata,
+  });
+
+  return node;
+}
+
+export async function updateNodeInTx(
+  client: PoolClient,
+  _board: Board,
+  nodeId: string,
+  patch: UpdateNodeRequest
+): Promise<{ node: Node; changes: Record<string, unknown>; previous: Record<string, unknown> }> {
+  const node = await findActiveById(client, nodeId);
+  assertNodeExists(node);
+  assertNodeNotLocked(node);
+
+  const fieldsToUpdate: Record<string, unknown> = {};
+  const changes: Record<string, unknown> = {};
+  const previous: Record<string, unknown> = {};
+
+  // Scalar fields
+  const scalarFields = ['x', 'y', 'width', 'height', 'rotation', 'zIndex', 'parentId', 'locked', 'hidden'] as const;
+  for (const field of scalarFields) {
+    if (patch[field] !== undefined) {
+      fieldsToUpdate[field] = patch[field];
+      changes[field] = patch[field];
+      previous[field] = node[field];
+    }
+  }
+
+  // Merge-patch fields (content, style, metadata)
+  const mergePatchFields = ['content', 'style', 'metadata'] as const;
+  for (const field of mergePatchFields) {
+    if (patch[field] !== undefined) {
+      const merged = applyMergePatch(
+        node[field] as Record<string, unknown>,
+        patch[field] as Record<string, unknown>
+      );
+      fieldsToUpdate[field] = merged;
+      changes[field] = patch[field];
+      previous[field] = node[field];
+    }
+  }
+
+  // Validate merged content
+  const finalContent = (fieldsToUpdate.content ?? node.content) as Record<string, unknown>;
+  validateNodeContent(node.type, finalContent);
+
+  const updatedNode = await updateNodeRepo(client, nodeId, fieldsToUpdate);
+
+  return { node: updatedNode, changes, previous };
+}
+
+export async function deleteNodeInTx(
+  client: PoolClient,
+  _board: Board,
+  nodeId: string
+): Promise<{ deletedNodeId: string; deletedEdgeIds: string[]; previousState: Record<string, unknown> }> {
+  const node = await findActiveById(client, nodeId);
+  assertNodeExists(node);
+  assertNodeNotLocked(node);
+
+  await softDeleteNode(client, nodeId);
+  const deletedEdgeIds = await softDeleteByNodeId(client, nodeId);
+
+  return {
+    deletedNodeId: nodeId,
+    deletedEdgeIds,
+    previousState: {
+      type: node.type,
+      x: node.x,
+      y: node.y,
+      width: node.width,
+      height: node.height,
+      content: node.content,
+    },
+  };
+}
+
 // ─── Create Node ─────────────────────────────────────────────────────────────
 
 export async function createNode(
@@ -25,23 +127,8 @@ export async function createNode(
 ): Promise<{ node: Node; boardRevision: number }> {
   return withBoardMutation(boardId, async ({ client, board }) => {
     assertBoardEditable(board);
-    validateNodeContent(data.type, data.content);
 
-    const node = await insertNode(client, {
-      boardId,
-      type: data.type,
-      x: data.x,
-      y: data.y,
-      width: data.width,
-      height: data.height,
-      content: data.content,
-      parentId: data.parentId,
-      rotation: data.rotation,
-      zIndex: data.zIndex,
-      style: data.style,
-      metadata: data.metadata,
-    });
-
+    const node = await createNodeInTx(client, board, data);
     const newRevision = board.revision + 1;
 
     const op = buildOperation({
@@ -85,43 +172,7 @@ export async function updateNode(
   return withBoardMutation(boardId, async ({ client, board }) => {
     assertBoardEditable(board);
 
-    const node = await findActiveById(client, nodeId);
-    assertNodeExists(node);
-    assertNodeNotLocked(node);
-
-    const fieldsToUpdate: Record<string, unknown> = {};
-    const changes: Record<string, unknown> = {};
-    const previous: Record<string, unknown> = {};
-
-    // Scalar fields
-    const scalarFields = ['x', 'y', 'width', 'height', 'rotation', 'zIndex', 'parentId', 'locked', 'hidden'] as const;
-    for (const field of scalarFields) {
-      if (patch[field] !== undefined) {
-        fieldsToUpdate[field] = patch[field];
-        changes[field] = patch[field];
-        previous[field] = node[field];
-      }
-    }
-
-    // Merge-patch fields (content, style, metadata)
-    const mergePatchFields = ['content', 'style', 'metadata'] as const;
-    for (const field of mergePatchFields) {
-      if (patch[field] !== undefined) {
-        const merged = applyMergePatch(
-          node[field] as Record<string, unknown>,
-          patch[field] as Record<string, unknown>
-        );
-        fieldsToUpdate[field] = merged;
-        changes[field] = patch[field];
-        previous[field] = node[field];
-      }
-    }
-
-    // Validate merged content
-    const finalContent = (fieldsToUpdate.content ?? node.content) as Record<string, unknown>;
-    validateNodeContent(node.type, finalContent);
-
-    const updatedNode = await updateNodeRepo(client, nodeId, fieldsToUpdate);
+    const { node: updatedNode, changes, previous } = await updateNodeInTx(client, board, nodeId, patch);
     const newRevision = board.revision + 1;
 
     const op = buildOperation({
@@ -154,13 +205,7 @@ export async function deleteNode(
   return withBoardMutation(boardId, async ({ client, board }) => {
     assertBoardEditable(board);
 
-    const node = await findActiveById(client, nodeId);
-    assertNodeExists(node);
-    assertNodeNotLocked(node);
-
-    await softDeleteNode(client, nodeId);
-    const deletedEdgeIds = await softDeleteByNodeId(client, nodeId);
-
+    const { deletedNodeId, deletedEdgeIds, previousState } = await deleteNodeInTx(client, board, nodeId);
     const newRevision = board.revision + 1;
     const operations = [];
 
@@ -172,17 +217,7 @@ export async function deleteNode(
         operationType: 'delete_node',
         targetType: 'node',
         targetId: nodeId,
-        payload: {
-          nodeId,
-          previousState: {
-            type: node.type,
-            x: node.x,
-            y: node.y,
-            width: node.width,
-            height: node.height,
-            content: node.content,
-          },
-        },
+        payload: { nodeId, previousState },
       })
     );
 
@@ -201,7 +236,7 @@ export async function deleteNode(
     }
 
     return {
-      result: { deletedNodeId: nodeId, deletedEdgeIds, boardRevision: newRevision },
+      result: { deletedNodeId, deletedEdgeIds, boardRevision: newRevision },
       operations,
       newRevision,
     };
