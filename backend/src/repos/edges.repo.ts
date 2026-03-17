@@ -27,3 +27,17 @@ export async function findActiveByBoardId(
   );
   return rows.map(mapEdgeRow);
 }
+
+export async function softDeleteByNodeId(
+  client: PoolClient,
+  nodeId: string
+): Promise<string[]> {
+  const { rows } = await client.query(
+    `UPDATE board_edges
+     SET deleted_at = now(), updated_at = now()
+     WHERE (source_node_id = $1 OR target_node_id = $1) AND deleted_at IS NULL
+     RETURNING id`,
+    [nodeId]
+  );
+  return rows.map((r: Record<string, unknown>) => r.id as string);
+}

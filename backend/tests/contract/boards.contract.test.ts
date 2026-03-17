@@ -305,7 +305,7 @@ describe('PATCH /api/boards/:boardId (T004, T005)', () => {
       .set('Content-Type', 'application/merge-patch+json')
       .send({ title: 'Should fail' });
 
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(409);
   });
 
   it('returns 422 for un-archive attempt', async () => {

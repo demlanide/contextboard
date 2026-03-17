@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { BoardError, BoardNotFoundError } from '../../domain/validation/board-rules.js';
+import { NodeError, NodeNotFoundError, NodeLockedError } from '../../domain/validation/node-rules.js';
 import { errorResponse } from '../../schemas/common.schemas.js';
 import { logger } from '../../obs/logger.js';
 
@@ -10,11 +11,29 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
+  // Node errors (before generic BoardError catch)
+  if (err instanceof NodeNotFoundError) {
+    return res.status(404).json(errorResponse(err.code, err.message));
+  }
+
+  if (err instanceof NodeLockedError) {
+    return res.status(409).json(errorResponse(err.code, err.message));
+  }
+
+  if (err instanceof NodeError) {
+    return res.status(422).json(errorResponse(err.code, err.message));
+  }
+
+  // Board errors
   if (err instanceof BoardNotFoundError) {
     return res.status(404).json(errorResponse(err.code, err.message));
   }
 
   if (err instanceof BoardError) {
+    // Archived board errors should return 409 Conflict
+    if (err.message === 'Archived boards are read-only') {
+      return res.status(409).json(errorResponse(err.code, err.message));
+    }
     return res.status(422).json(errorResponse(err.code, err.message));
   }
 
