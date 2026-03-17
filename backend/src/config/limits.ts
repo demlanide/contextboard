@@ -10,4 +10,7 @@ export const limits = {
     width: { min: 0, max: 10_000 },
     height: { min: 0, max: 10_000 },
   },
+  edge: {
+    label: { max: 1_000 },
+  },
 } as const;

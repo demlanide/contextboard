@@ -7,6 +7,7 @@ import type { BoardNode } from '@/store/types'
 interface NodeWrapperProps {
   node: BoardNode
   isSelected?: boolean
+  connectionDragSourceId?: string | null
   children: React.ReactNode
   onClick?: (e: React.MouseEvent) => void
   onDoubleClick?: (e: React.MouseEvent) => void
@@ -15,6 +16,7 @@ interface NodeWrapperProps {
 export function NodeWrapper({
   node,
   isSelected,
+  connectionDragSourceId,
   children,
   onClick,
   onDoubleClick,
@@ -36,6 +38,10 @@ export function NodeWrapper({
   const isPending = mutationStatus === 'pending'
   const isFailed = mutationStatus === 'failed'
 
+  // Connection drag feedback
+  const isDragSource = connectionDragSourceId === node.id
+  const isValidTarget = connectionDragSourceId != null && connectionDragSourceId !== node.id
+
   return (
     <div
       className="absolute"
@@ -46,8 +52,16 @@ export function NodeWrapper({
         height: node.height,
         zIndex: node.zIndex,
         transform: node.rotation ? `rotate(${node.rotation}deg)` : undefined,
-        opacity: isPending ? 0.7 : opacity,
-        outline: isSelected ? '2px solid #3B82F6' : isFailed ? '2px solid #F87171' : 'none',
+        opacity: isPending ? 0.7 : isDragSource ? 0.5 : opacity,
+        outline: isSelected
+          ? '2px solid #3B82F6'
+          : isFailed
+            ? '2px solid #F87171'
+            : isValidTarget
+              ? '2px solid #4ADE80'
+              : isDragSource
+                ? '2px solid #FCA5A5'
+                : 'none',
         outlineOffset: 1,
         boxSizing: 'border-box',
       }}

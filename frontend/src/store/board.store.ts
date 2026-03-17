@@ -1,11 +1,13 @@
 import { create } from 'zustand'
-import type { BoardStore, BoardNode, BoardEdge, HydrateBoardData, SyncError, SyncState, UIState } from './types'
+import type { BoardStore, BoardNode, BoardEdge, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState } from './types'
 
 const INITIAL_UI: UIState = {
   chatSidebarOpen: true,
   placementMode: null,
   selectedNodeIds: [],
   editingNodeId: null,
+  selectedEdgeId: null,
+  connectionDrag: null,
 }
 const INITIAL_SYNC: SyncState = { hydrateStatus: 'idle', lastSyncedRevision: null, lastError: null }
 
@@ -225,4 +227,97 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       const { [nodeId]: _, ...remaining } = state.nodeMutationStatus
       return { nodeMutationStatus: remaining }
     }),
+
+  // ─── Edge CRUD UI Actions ────────────────────────────────────────────────
+
+  setSelectedEdgeId: (id) =>
+    set((state) => ({ ui: { ...state.ui, selectedEdgeId: id } })),
+
+  setConnectionDrag: (dragState) =>
+    set((state) => ({ ui: { ...state.ui, connectionDrag: dragState } })),
+
+  // ─── Optimistic Edge Create ──────────────────────────────────────────────
+
+  addEdgeOptimistic: (tempId, edge) =>
+    set((state) => ({
+      edgesById: { ...state.edgesById, [tempId]: edge },
+      edgeOrder: [...state.edgeOrder, tempId],
+    })),
+
+  confirmEdge: (tempId, serverEdge, boardRevision) =>
+    set((state) => {
+      const { [tempId]: _, ...remainingEdges } = state.edgesById
+      return {
+        edgesById: { ...remainingEdges, [serverEdge.id]: serverEdge },
+        edgeOrder: state.edgeOrder
+          .filter((id) => id !== tempId)
+          .concat(serverEdge.id),
+        board: state.board ? { ...state.board, revision: boardRevision } : null,
+        sync: { ...state.sync, lastSyncedRevision: boardRevision },
+      }
+    }),
+
+  rollbackEdge: (tempId) =>
+    set((state) => {
+      const { [tempId]: _, ...remainingEdges } = state.edgesById
+      return {
+        edgesById: remainingEdges,
+        edgeOrder: state.edgeOrder.filter((id) => id !== tempId),
+      }
+    }),
+
+  // ─── Optimistic Edge Update ──────────────────────────────────────────────
+
+  updateEdgeOptimistic: (edgeId, patch) =>
+    set((state) => {
+      const existing = state.edgesById[edgeId]
+      if (!existing) return state
+      return {
+        edgesById: {
+          ...state.edgesById,
+          [edgeId]: { ...existing, ...patch },
+        },
+      }
+    }),
+
+  confirmEdgeUpdate: (edgeId, serverEdge, boardRevision) =>
+    set((state) => ({
+      edgesById: { ...state.edgesById, [edgeId]: serverEdge },
+      board: state.board ? { ...state.board, revision: boardRevision } : null,
+      sync: { ...state.sync, lastSyncedRevision: boardRevision },
+    })),
+
+  rollbackEdgeUpdate: (edgeId, snapshot) =>
+    set((state) => ({
+      edgesById: { ...state.edgesById, [edgeId]: snapshot },
+    })),
+
+  // ─── Optimistic Edge Delete ──────────────────────────────────────────────
+
+  removeEdgeOptimistic: (edgeId) => {
+    const state = get()
+    const edge = state.edgesById[edgeId]
+    if (!edge) return null
+
+    set({
+      edgesById: Object.fromEntries(
+        Object.entries(state.edgesById).filter(([id]) => id !== edgeId),
+      ),
+      edgeOrder: state.edgeOrder.filter((id) => id !== edgeId),
+    })
+
+    return { edge }
+  },
+
+  confirmEdgeDelete: (edgeId, boardRevision) =>
+    set((state) => ({
+      board: state.board ? { ...state.board, revision: boardRevision } : null,
+      sync: { ...state.sync, lastSyncedRevision: boardRevision },
+    })),
+
+  undoEdgeDelete: (snapshot) =>
+    set((state) => ({
+      edgesById: { ...state.edgesById, [snapshot.edge.id]: snapshot.edge },
+      edgeOrder: [...state.edgeOrder, snapshot.edge.id],
+    })),
 }))

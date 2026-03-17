@@ -60,11 +60,21 @@ export interface BoardSettings {
   agentEditMode: 'suggest' | 'apply'
 }
 
+export interface ConnectionDragState {
+  sourceNodeId: string
+  cursorX: number
+  cursorY: number
+  hoveredTargetId: string | null
+  isValid: boolean
+}
+
 export interface UIState {
   chatSidebarOpen: boolean
   placementMode: BoardNode['type'] | null
   selectedNodeIds: string[]
   editingNodeId: string | null
+  selectedEdgeId: string | null
+  connectionDrag: ConnectionDragState | null
 }
 
 export interface PendingNode {
@@ -136,6 +146,25 @@ export interface BoardStore {
 
   // Mutation status
   clearNodeMutationStatus: (nodeId: string) => void
+
+  // Edge CRUD actions
+  setSelectedEdgeId: (id: string | null) => void
+  setConnectionDrag: (state: ConnectionDragState | null) => void
+
+  // Optimistic edge create
+  addEdgeOptimistic: (tempId: string, edge: BoardEdge) => void
+  confirmEdge: (tempId: string, serverEdge: BoardEdge, boardRevision: number) => void
+  rollbackEdge: (tempId: string) => void
+
+  // Optimistic edge update
+  updateEdgeOptimistic: (edgeId: string, patch: Partial<BoardEdge>) => void
+  confirmEdgeUpdate: (edgeId: string, serverEdge: BoardEdge, boardRevision: number) => void
+  rollbackEdgeUpdate: (edgeId: string, snapshot: BoardEdge) => void
+
+  // Optimistic edge delete
+  removeEdgeOptimistic: (edgeId: string) => { edge: BoardEdge } | null
+  confirmEdgeDelete: (edgeId: string, boardRevision: number) => void
+  undoEdgeDelete: (snapshot: { edge: BoardEdge }) => void
 }
 
 export interface HydrateBoardData {

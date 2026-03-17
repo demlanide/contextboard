@@ -14,6 +14,11 @@ import {
   handleUpdateNode,
   handleDeleteNode,
 } from './controllers/nodes.controller.js';
+import {
+  handleCreateEdge,
+  handleUpdateEdge,
+  handleDeleteEdge,
+} from './controllers/edges.controller.js';
 
 const router = Router();
 
@@ -55,5 +60,21 @@ router.patch(
 );
 
 router.delete('/nodes/:nodeId', handleDeleteNode);
+
+// S6: Edge CRUD
+router.post(
+  '/boards/:boardId/edges',
+  idempotencyMiddleware('create_edge'),
+  handleCreateEdge
+);
+
+router.patch(
+  '/edges/:edgeId',
+  requireMergePatch,
+  idempotencyMiddleware('update_edge'),
+  handleUpdateEdge
+);
+
+router.delete('/edges/:edgeId', handleDeleteEdge);
 
 export { router };
