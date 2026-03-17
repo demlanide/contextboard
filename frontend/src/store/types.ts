@@ -62,6 +62,16 @@ export interface BoardSettings {
 
 export interface UIState {
   chatSidebarOpen: boolean
+  placementMode: BoardNode['type'] | null
+  selectedNodeIds: string[]
+  editingNodeId: string | null
+}
+
+export interface PendingNode {
+  tempId: string
+  node: Partial<BoardNode>
+  status: 'pending' | 'failed'
+  error?: string
 }
 
 export interface SyncState {
@@ -92,6 +102,8 @@ export interface BoardStore {
   nodeOrder: string[]
   edgeOrder: string[]
   chatThread: ChatThreadRef | null
+  pendingNodes: Record<string, PendingNode>
+  nodeMutationStatus: Record<string, 'pending' | 'confirmed' | 'failed'>
   ui: UIState
   sync: SyncState
 
@@ -100,6 +112,30 @@ export interface BoardStore {
   setHydrateStatus: (status: SyncState['hydrateStatus']) => void
   setError: (error: SyncError) => void
   toggleChatSidebar: () => void
+
+  // Node CRUD actions
+  setPlacementMode: (mode: BoardNode['type'] | null) => void
+  setSelectedNodeIds: (ids: string[]) => void
+  setEditingNodeId: (id: string | null) => void
+
+  // Optimistic create
+  addPendingNode: (tempId: string, node: Partial<BoardNode>) => void
+  confirmNode: (tempId: string, serverNode: BoardNode, boardRevision: number) => void
+  rollbackPendingNode: (tempId: string) => void
+
+  // Optimistic update
+  updateNodeOptimistic: (nodeId: string, patch: Partial<BoardNode>) => void
+  confirmNodeUpdate: (nodeId: string, serverNode: BoardNode, boardRevision: number) => void
+  rollbackNodeUpdate: (nodeId: string, snapshot: BoardNode) => void
+  setNodePosition: (nodeId: string, x: number, y: number) => void
+
+  // Optimistic delete
+  deleteNodeOptimistic: (nodeId: string) => { node: BoardNode; edges: BoardEdge[] } | null
+  undoDeleteNode: (snapshot: { node: BoardNode; edges: BoardEdge[] }) => void
+  confirmNodeDelete: (nodeId: string, deletedEdgeIds: string[], boardRevision: number) => void
+
+  // Mutation status
+  clearNodeMutationStatus: (nodeId: string) => void
 }
 
 export interface HydrateBoardData {

@@ -1635,10 +1635,13 @@ components:
           properties:
             data:
               type: object
-              required: [node]
+              required: [node, boardRevision]
               properties:
                 node:
                   $ref: '#/components/schemas/Node'
+                boardRevision:
+                  type: integer
+                  minimum: 0
 
     DeleteNodeResponse:
       allOf:
@@ -1647,13 +1650,21 @@ components:
           properties:
             data:
               type: object
-              required: [success, deletedNodeId]
+              required: [success, deletedNodeId, deletedEdgeIds, boardRevision]
               properties:
                 success:
                   type: boolean
                 deletedNodeId:
                   type: string
                   format: uuid
+                deletedEdgeIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                boardRevision:
+                  type: integer
+                  minimum: 0
 
     BatchNodesResponse:
       allOf:

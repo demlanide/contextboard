@@ -9,6 +9,11 @@ import {
   handleDeleteBoard,
 } from './controllers/boards.controller.js';
 import { handleGetBoardState } from './controllers/board-state.controller.js';
+import {
+  handleCreateNode,
+  handleUpdateNode,
+  handleDeleteNode,
+} from './controllers/nodes.controller.js';
 
 const router = Router();
 
@@ -34,5 +39,21 @@ router.patch(
 
 // US5: Delete Board
 router.delete('/boards/:boardId', handleDeleteBoard);
+
+// S5: Node CRUD
+router.post(
+  '/boards/:boardId/nodes',
+  idempotencyMiddleware('create_node'),
+  handleCreateNode
+);
+
+router.patch(
+  '/nodes/:nodeId',
+  requireMergePatch,
+  idempotencyMiddleware('update_node'),
+  handleUpdateNode
+);
+
+router.delete('/nodes/:nodeId', handleDeleteNode);
 
 export { router };

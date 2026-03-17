@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2026-03-16
 
 ## Active Technologies
+- TypeScript 5.7+ (Node.js LTS for backend, browser for frontend) + Express (HTTP), Zod (schema validation), node-postgres (pg) for backend; React 19, React Router 7, Zustand, Vite for frontend (005-node-crud)
+- PostgreSQL 15+ (backend source of truth); Zustand normalized store (frontend confirmed state) (005-node-crud)
 
 - TypeScript 5.7+ (matching backend) + React 19, React Router 7, Zustand (state management), Vite (bundler/dev server) (004-create-the-next-feature-spec-for-context-board-mvp-004-frontend-foundation-frontend-app-bootstrap-routing-api-client-board-create-open-flow-hydration-integration-loading-empty-error-states-canvas-and-chat-placeholders-lint-test-baseline)
 
@@ -23,6 +25,7 @@ npm test; npm run lint
 TypeScript 5.7+ (matching backend): Follow standard conventions
 
 ## Recent Changes
+- 005-node-crud: Added TypeScript 5.7+ (Node.js LTS for backend, browser for frontend) + Express (HTTP), Zod (schema validation), node-postgres (pg) for backend; React 19, React Router 7, Zustand, Vite for frontend
 
 - 004-create-the-next-feature-spec-for-context-board-mvp-004-frontend-foundation-frontend-app-bootstrap-routing-api-client-board-create-open-flow-hydration-integration-loading-empty-error-states-canvas-and-chat-placeholders-lint-test-baseline: Added TypeScript 5.7+ (matching backend) + React 19, React Router 7, Zustand (state management), Vite (bundler/dev server)
 
