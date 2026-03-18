@@ -251,9 +251,11 @@ if ($branchName.Length -gt $maxBranchLength) {
 }
 
 if ($hasGit) {
+    # Create the feature branch without checking it out, so callers
+    # remain on their current branch unless they explicitly switch.
     $branchCreated = $false
     try {
-        git checkout -q -b $branchName 2>$null | Out-Null
+        git branch $branchName 2>$null | Out-Null
         if ($LASTEXITCODE -eq 0) {
             $branchCreated = $true
         }
@@ -271,6 +273,8 @@ if ($hasGit) {
             Write-Error "Error: Failed to create git branch '$branchName'. Please check your git configuration and try again."
             exit 1
         }
+    } else {
+        Write-Host "[specify] Created git branch '$branchName' (current branch unchanged)."
     }
 } else {
     Write-Warning "[specify] Warning: Git repository not detected; skipped branch creation for $branchName"

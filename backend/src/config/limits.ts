@@ -47,11 +47,10 @@ export const limits = {
     nearbyRadiusPx: 800,
     selectionMaxNodeIds: 100,
     selectionMaxEdgeIds: 100,
-  },
-  chat: {
-    messageText: { min: 1, max: 20_000 },
-    messagesPerLoad: 200,
-    selectionMaxNodeIds: 100,
-    selectionMaxEdgeIds: 100,
+    apply: {
+      maxOperations: 200,
+      maxPayloadBytes: 1_048_576,
+      idempotencyRetentionMinutes: 5,
+    },
   },
 } as const;

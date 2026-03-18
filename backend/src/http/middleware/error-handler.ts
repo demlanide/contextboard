@@ -6,6 +6,7 @@ import { EdgeError, EdgeNotFoundError, InvalidEdgeReferenceError } from '../../d
 import { BatchValidationError } from '../../domain/validation/batch-rules.js';
 import { AssetError, AssetNotFoundError, AssetThumbnailNotAvailableError } from '../../domain/validation/asset-rules.js';
 import { ChatError, ChatThreadNotFoundError } from '../../domain/validation/chat-rules.js';
+import { ApplyError } from '../../services/agent-apply.service.js';
 import { errorResponse } from '../../schemas/common.schemas.js';
 import { logger } from '../../obs/logger.js';
 
@@ -15,6 +16,19 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
+  // Apply errors (agent-apply)
+  if (err instanceof ApplyError) {
+    const statusMap: Record<string, number> = {
+      LOCKED_NODE: 409,
+      ACTION_PLAN_INVALID: 422,
+      ACTION_PLAN_TOO_LARGE: 413,
+    };
+    const status = statusMap[err.code] ?? 422;
+    return res.status(status).json({
+      error: { code: err.code, message: err.message, details: err.details },
+    });
+  }
+
   // Batch validation errors
   if (err instanceof BatchValidationError) {
     return res.status(422).json(errorResponse(err.code, err.message, err.details));

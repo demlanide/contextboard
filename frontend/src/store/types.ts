@@ -232,6 +232,22 @@ export interface AgentState {
   previewVisible: boolean
   previewStale: boolean
   suggestError: SyncError | null
+  applyStatus: 'idle' | 'running' | 'success' | 'error'
+  applyError: SyncError | null
+}
+
+export interface ApplyResponse {
+  boardRevision: number
+  updatedBoard: {
+    id: string
+    revision: number
+    nodes: BoardNode[]
+    edges: BoardEdge[]
+  }
+  tempIdMapping: {
+    nodes: Record<string, string>
+    edges: Record<string, string>
+  }
 }
 
 export interface BoardListItem {
@@ -351,6 +367,12 @@ export interface BoardStore {
   clearSuggestion: () => void
   setSuggestError: (error: SyncError | null) => void
   setPreviewStale: (stale: boolean) => void
+
+  // Apply actions
+  setApplyStatus: (status: AgentState['applyStatus']) => void
+  setApplyError: (error: SyncError | null) => void
+  clearApplyState: () => void
+  reconcileApply: (response: ApplyResponse) => void
 }
 
 export interface HydrateBoardData {

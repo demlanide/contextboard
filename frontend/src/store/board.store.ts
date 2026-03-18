@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { BoardStore, BoardNode, BoardEdge, BoardAsset, BatchMutationState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState, ChatState, AgentState, ChatMessage, AgentSuggestion } from './types'
+import type { BoardStore, BoardNode, BoardEdge, BoardAsset, BatchMutationState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState, ChatState, AgentState, ChatMessage, AgentSuggestion, ApplyResponse } from './types'
 
 const INITIAL_BATCH: BatchMutationState = {
   status: 'idle',
@@ -23,6 +23,8 @@ const INITIAL_AGENT: AgentState = {
   previewVisible: false,
   previewStale: false,
   suggestError: null,
+  applyStatus: 'idle',
+  applyError: null,
 }
 
 const INITIAL_UI: UIState = {
@@ -656,6 +658,57 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     set((state) => ({
       agentState: { ...state.agentState, previewStale: stale },
     })),
+
+  // ─── Apply Actions ──────────────────────────────────────────────────────────
+
+  setApplyStatus: (status) =>
+    set((state) => ({
+      agentState: { ...state.agentState, applyStatus: status },
+    })),
+
+  setApplyError: (error) =>
+    set((state) => ({
+      agentState: { ...state.agentState, applyError: error, applyStatus: error ? 'error' : 'idle' },
+    })),
+
+  clearApplyState: () =>
+    set((state) => ({
+      agentState: { ...state.agentState, applyStatus: 'idle', applyError: null },
+    })),
+
+  reconcileApply: (response: ApplyResponse) =>
+    set((state) => {
+      const nodesById: Record<string, BoardNode> = {}
+      const nodeOrder: string[] = []
+      for (const node of response.updatedBoard.nodes) {
+        nodesById[node.id] = node
+        nodeOrder.push(node.id)
+      }
+
+      const edgesById: Record<string, BoardEdge> = {}
+      const edgeOrder: string[] = []
+      for (const edge of response.updatedBoard.edges) {
+        edgesById[edge.id] = edge
+        edgeOrder.push(edge.id)
+      }
+
+      return {
+        nodesById,
+        edgesById,
+        nodeOrder,
+        edgeOrder,
+        board: state.board ? { ...state.board, revision: response.boardRevision } : null,
+        sync: { ...state.sync, lastSyncedRevision: response.boardRevision },
+        agentState: {
+          ...state.agentState,
+          latestSuggestion: null,
+          previewVisible: false,
+          previewStale: false,
+          applyStatus: 'success',
+          applyError: null,
+        },
+      }
+    }),
 }))
 
 // T039: Stale detection — watch for board revision changes

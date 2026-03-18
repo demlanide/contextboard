@@ -42,4 +42,8 @@ export const env = {
   SUGGEST_RATE_LIMIT: parseIntEnv('SUGGEST_RATE_LIMIT', 12),
   AGENT_TIMEOUT_MS: parseIntEnv('AGENT_TIMEOUT_MS', 12_000),
   CHAT_REQUEST_TIMEOUT_MS: parseIntEnv('CHAT_REQUEST_TIMEOUT_MS', 20_000),
+
+  // Agent apply config
+  APPLY_REQUEST_TIMEOUT_MS: parseIntEnv('APPLY_REQUEST_TIMEOUT_MS', 10_000),
+  APPLY_RATE_LIMIT: parseIntEnv('APPLY_RATE_LIMIT', 20),
 } as const;

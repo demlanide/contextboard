@@ -131,3 +131,40 @@ export const PreviewPayloadSchema = z.object({
   newNodeTempIds: z.array(z.string()),
   newEdgeTempIds: z.array(z.string()),
 });
+
+// ─── Apply Request/Response Schemas ─────────────────────────────────────────
+
+export const ApplyRequestSchema = z.object({
+  mode: z.literal('apply'),
+  actionPlan: z.array(ActionPlanItemSchema).min(1),
+});
+
+export type ApplyRequest = z.infer<typeof ApplyRequestSchema>;
+
+export const ApplyResponseSchema = z.object({
+  boardRevision: z.number(),
+  updatedBoard: z.object({
+    id: z.string(),
+    revision: z.number(),
+    nodes: z.array(z.any()),
+    edges: z.array(z.any()),
+  }),
+  tempIdMapping: z.object({
+    nodes: z.record(z.string()),
+    edges: z.record(z.string()),
+  }),
+});
+
+export type ApplyResponse = {
+  boardRevision: number;
+  updatedBoard: {
+    id: string;
+    revision: number;
+    nodes: unknown[];
+    edges: unknown[];
+  };
+  tempIdMapping: {
+    nodes: Record<string, string>;
+    edges: Record<string, string>;
+  };
+};

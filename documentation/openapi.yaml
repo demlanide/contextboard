@@ -482,6 +482,19 @@ paths:
           $ref: '#/components/responses/BoardNotFound'
         '409':
           $ref: '#/components/responses/ConflictError'
+        '413':
+          description: Action plan too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                error:
+                  code: ACTION_PLAN_TOO_LARGE
+                  message: This set of changes is too large to apply at once. Try splitting it into smaller steps.
+                  details:
+                    maxOperations: 200
+                    maxPayloadBytes: 1048576
         '422':
           $ref: '#/components/responses/ActionPlanInvalid'
 
@@ -1535,12 +1548,12 @@ components:
 
     ApplyAgentActionsRequest:
       type: object
-      required: [sourceMessageId, actionPlan]
+      required: [mode, actionPlan]
       additionalProperties: false
       properties:
-        sourceMessageId:
+        mode:
           type: string
-          format: uuid
+          enum: [apply]
         actionPlan:
           type: array
           minItems: 1
@@ -1785,36 +1798,41 @@ components:
                   $ref: '#/components/schemas/Preview'
 
     ApplyAgentActionsResponse:
-      allOf:
-        - $ref: '#/components/schemas/SuccessEnvelopeBase'
-        - type: object
+      type: object
+      required: [boardRevision, updatedBoard, tempIdMapping]
+      properties:
+        boardRevision:
+          type: integer
+          minimum: 1
+        updatedBoard:
+          type: object
+          required: [id, revision, nodes, edges]
           properties:
-            data:
+            id:
+              type: string
+              format: uuid
+            revision:
+              type: integer
+            nodes:
+              type: array
+              items:
+                $ref: '#/components/schemas/Node'
+            edges:
+              type: array
+              items:
+                $ref: '#/components/schemas/Edge'
+        tempIdMapping:
+          type: object
+          required: [nodes, edges]
+          properties:
+            nodes:
               type: object
-              required: [applied, batchId, boardRevision, created, updated, deleted]
-              properties:
-                applied:
-                  type: boolean
-                batchId:
-                  type: string
-                  format: uuid
-                boardRevision:
-                  type: integer
-                  minimum: 0
-                created:
-                  type: array
-                  items:
-                    type: object
-                    additionalProperties: true
-                updated:
-                  type: array
-                  items:
-                    type: object
-                    additionalProperties: true
-                deleted:
-                  type: array
-                  items:
-                    type: object
+              additionalProperties:
+                type: string
+            edges:
+              type: object
+              additionalProperties:
+                type: string
                     additionalProperties: true
 
     GetOperationsResponse:

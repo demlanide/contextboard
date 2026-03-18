@@ -21,7 +21,7 @@ import {
   handleDeleteEdge,
 } from './controllers/edges.controller.js';
 import { handleGetChat, handleSendMessage } from './controllers/chat.controller.js';
-import { suggestHandler } from './controllers/agent.controller.js';
+import { suggestHandler, applyHandler } from './controllers/agent.controller.js';
 import { rateLimit } from './middleware/rate-limit.js';
 import { env } from '../config/env.js';
 import {
@@ -30,10 +30,6 @@ import {
   handleGetAssetFile,
   handleGetAssetThumbnail,
 } from './controllers/assets.controller.js';
-import {
-  handleGetChat,
-  handleSendMessage,
-} from './controllers/chat.controller.js';
 import { uploadMiddleware } from './middleware/upload.js';
 
 const router: RouterType = Router();
@@ -46,6 +42,9 @@ router.get('/boards', handleListBoards);
 
 // S10: Agent suggest
 router.post('/boards/:boardId/agent/actions', rateLimit(env.SUGGEST_RATE_LIMIT), suggestHandler);
+
+// S11: Agent apply
+router.post('/boards/:boardId/agent/actions/apply', rateLimit(env.APPLY_RATE_LIMIT), applyHandler);
 
 // S9: Chat
 router.get('/boards/:boardId/chat', handleGetChat);
@@ -106,10 +105,6 @@ router.patch(
 );
 
 router.delete('/edges/:edgeId', handleDeleteEdge);
-
-// S9: Chat
-router.get('/boards/:boardId/chat', handleGetChat);
-router.post('/boards/:boardId/chat/messages', handleSendMessage);
 
 // S8: Asset CRUD
 router.post(

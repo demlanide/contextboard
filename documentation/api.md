@@ -780,17 +780,17 @@ Rules:
 ---
 
 ### POST /api/boards/:boardId/agent/actions/apply
-Validate and apply action plan.
+Validate and apply an agent-generated action plan in a single atomic transaction.
 
 Request:
 ```json
 {
-  "sourceMessageId": "uuid-msg-agent",
+  "mode": "apply",
   "actionPlan": [
     {
       "type": "update_node",
-      "targetId": "uuid-node-1",
-      "changes": {
+      "nodeId": "uuid-node-1",
+      "patch": {
         "x": 120,
         "y": 140
       }
@@ -804,13 +804,9 @@ Request:
         "y": 80,
         "width": 220,
         "height": 80,
-        "content": {
-          "text": "Theme B"
-        },
+        "content": { "text": "Theme B" },
         "style": {},
-        "metadata": {
-          "aiGenerated": true
-        }
+        "metadata": { "aiGenerated": true }
       }
     }
   ]
@@ -818,26 +814,37 @@ Request:
 ```
 
 Rules:
-- atomic transaction
-- board revision increments once
-- all durable changes must write operation rows
-- backend may create snapshot before apply
-- invalid action plan fails whole request
+- atomic transaction — all or nothing
+- board revision increments exactly once on success
+- all changes write operation rows with `actorType: 'agent'`
+- invalid action plan fails the whole request (no partial commits)
+- idempotency key derived from normalized plan + board revision; duplicate apply returns cached 200
+- max 200 operations per apply; max 1 MB payload
+- rate-limited to 20 requests per window
 
-Response:
+Success response (200):
 ```json
 {
-  "data": {
-    "applied": true,
-    "batchId": "uuid-batch",
-    "boardRevision": 14,
-    "created": [],
-    "updated": [],
-    "deleted": []
+  "boardRevision": 14,
+  "updatedBoard": {
+    "id": "uuid-board",
+    "revision": 14,
+    "nodes": [],
+    "edges": []
   },
-  "error": null
+  "tempIdMapping": {
+    "nodes": { "tmp-1": "uuid-new-node" },
+    "edges": {}
+  }
 }
 ```
+
+Error responses:
+- 409 `LOCKED_NODE` — plan targets locked nodes
+- 422 `ACTION_PLAN_INVALID` — broken references, schema violations
+- 413 `ACTION_PLAN_TOO_LARGE` — plan exceeds size/operation limits
+- 404 `BOARD_NOT_FOUND` — board does not exist
+- 409 `BOARD_ARCHIVED` — board is archived
 
 ---
 

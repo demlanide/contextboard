@@ -10,7 +10,7 @@ import { callLLM } from '../agent/llm-client.js';
 import { validateLLMOutput, validateActionPlanReferences } from '../agent/output-validator.js';
 import { buildPreview } from '../agent/preview-builder.js';
 import { logger } from '../obs/logger.js';
-import type { ChatMessage } from '../schemas/chat.schemas.js';
+import type { ChatMessageResponse as ChatMessage } from '../schemas/chat.schemas.js';
 import type { ActionPlanItem, PreviewPayload } from '../agent/types.js';
 
 export interface SuggestResult {

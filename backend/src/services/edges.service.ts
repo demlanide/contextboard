@@ -1,4 +1,6 @@
+import { PoolClient } from 'pg';
 import { withBoardMutation, withTransaction } from '../db/tx.js';
+import { Board } from '../schemas/board.schemas.js';
 import { assertBoardEditable } from '../domain/validation/board-rules.js';
 import {
   assertEdgeExists,
@@ -178,6 +180,92 @@ export async function deleteEdge(
       newRevision,
     };
   });
+}
+
+// ─── In-Transaction Helpers (for apply executor) ─────────────────────────
+
+export async function createEdgeInTx(
+  client: PoolClient,
+  board: Board,
+  data: CreateEdgeRequest
+): Promise<Edge> {
+  assertNotSelfLoop(data.sourceNodeId, data.targetNodeId);
+
+  const sourceNode = await findNodeActiveById(client, data.sourceNodeId);
+  const targetNode = await findNodeActiveById(client, data.targetNodeId);
+  assertEndpointsExist(sourceNode, targetNode);
+  assertEndpointsActive(sourceNode!, targetNode!);
+  assertEndpointsSameBoard(board.id, sourceNode!, targetNode!);
+
+  const edge = await insertEdge(client, {
+    boardId: board.id,
+    sourceNodeId: data.sourceNodeId,
+    targetNodeId: data.targetNodeId,
+    label: data.label,
+    style: data.style,
+    metadata: data.metadata,
+  });
+
+  return edge;
+}
+
+export async function updateEdgeInTx(
+  client: PoolClient,
+  _board: Board,
+  edgeId: string,
+  patch: UpdateEdgeRequest
+): Promise<{ edge: Edge; changes: Record<string, unknown>; previous: Record<string, unknown> }> {
+  const edge = await findActiveById(client, edgeId);
+  assertEdgeExists(edge);
+  assertEdgeActive(edge);
+
+  const fieldsToUpdate: Record<string, unknown> = {};
+  const changes: Record<string, unknown> = {};
+  const previous: Record<string, unknown> = {};
+
+  if (patch.label !== undefined) {
+    fieldsToUpdate.label = patch.label;
+    changes.label = patch.label;
+    previous.label = edge.label;
+  }
+
+  const mergePatchFields = ['style', 'metadata'] as const;
+  for (const field of mergePatchFields) {
+    if (patch[field] !== undefined) {
+      const merged = applyMergePatch(
+        edge[field] as Record<string, unknown>,
+        patch[field] as Record<string, unknown>
+      );
+      fieldsToUpdate[field] = merged;
+      changes[field] = patch[field];
+      previous[field] = edge[field];
+    }
+  }
+
+  const updatedEdge = await updateEdgeRepo(client, edgeId, fieldsToUpdate);
+
+  return { edge: updatedEdge, changes, previous };
+}
+
+export async function deleteEdgeInTx(
+  client: PoolClient,
+  _board: Board,
+  edgeId: string
+): Promise<{ edgeId: string; previousState: Record<string, unknown> }> {
+  const edge = await findActiveById(client, edgeId);
+  assertEdgeExists(edge);
+  assertEdgeActive(edge);
+
+  await softDeleteEdge(client, edgeId);
+
+  return {
+    edgeId,
+    previousState: {
+      sourceNodeId: edge.sourceNodeId,
+      targetNodeId: edge.targetNodeId,
+      label: edge.label,
+    },
+  };
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

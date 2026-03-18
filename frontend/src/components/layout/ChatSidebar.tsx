@@ -3,6 +3,7 @@ import { useEffect, useCallback } from 'react'
 import { useBoardStore } from '@/store/board.store'
 import { useChat } from '@/hooks/useChat'
 import { useSuggest } from '@/hooks/useSuggest'
+import { useApply } from '@/hooks/useApply'
 import { MessageList } from '../chat/MessageList'
 import { MessageComposer } from '../chat/MessageComposer'
 import { ActionSummaryList } from '../chat/ActionSummaryList'
@@ -17,6 +18,7 @@ export function ChatSidebar() {
 
   const { messages, loadStatus, loadHistory } = useChat(boardId)
   const { latestSuggestion, suggestStatus, suggestError, submitSuggest, dismissSuggestion } = useSuggest(boardId)
+  const { applyStatus, applyError, submitApply, dismissApplyError } = useApply(boardId)
 
   useEffect(() => {
     loadHistory()
@@ -55,7 +57,40 @@ export function ChatSidebar() {
           <ActionSummaryList
             actionPlan={latestSuggestion.actionPlan}
             onDismiss={dismissSuggestion}
+            onApply={submitApply}
+            applyStatus={applyStatus}
           />
+        )}
+
+        {/* Apply error display */}
+        {applyError && (
+          <div className="px-3 py-2 text-xs bg-red-50 border-t border-red-100">
+            <p className="text-red-600">
+              {applyError.code === 'LOCKED_NODE'
+                ? "Some items are locked and can't be changed."
+                : applyError.code === 'ACTION_PLAN_INVALID'
+                  ? 'The suggestion is out of date. Try requesting a new one.'
+                  : applyError.code === 'ACTION_PLAN_TOO_LARGE'
+                    ? 'Too many changes at once — try smaller steps.'
+                    : applyError.message}
+            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <button
+                onClick={dismissApplyError}
+                className="text-[10px] text-red-500 hover:text-red-700 underline"
+              >
+                Dismiss
+              </button>
+              {applyError.retryable && (
+                <button
+                  onClick={submitApply}
+                  className="text-[10px] text-red-500 hover:text-red-700 underline"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Error display */}

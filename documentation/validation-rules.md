@@ -671,6 +671,18 @@ If any action fails validation or execution:
 - do not bump revision
 - do not append durable operations for partial work
 
+## Apply error codes
+
+| Code | HTTP | When |
+|------|------|------|
+| `LOCKED_NODE` | 409 | Any target node in the plan is locked |
+| `ACTION_PLAN_INVALID` | 422 | Broken references, schema violations, or disallowed operations |
+| `ACTION_PLAN_TOO_LARGE` | 413 | Plan exceeds max operations (200) or max payload size (1 MB) |
+| `BOARD_NOT_FOUND` | 404 | Board does not exist or is deleted |
+| `BOARD_ARCHIVED` | 409 | Board is archived and read-only |
+
+Error responses include concise user-facing messages and stable codes. Full technical details are logged server-side only.
+
 ---
 
 ## Action plan validation rules
