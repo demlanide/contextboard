@@ -41,7 +41,7 @@ export function BoardPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-screen overflow-hidden">
       <BoardHeader />
       <BoardWorkspace />
     </div>

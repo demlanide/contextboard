@@ -4,7 +4,7 @@
   "description": "Context Board backend API",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main/bootstrap.ts",
+    "dev": "tsx watch --env-file=.env src/main/bootstrap.ts",
     "build": "tsc --project tsconfig.json",
     "start": "node dist/main/bootstrap.js",
     "db:migrate": "tsx src/db/migrate.ts",

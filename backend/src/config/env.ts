@@ -28,6 +28,18 @@ export const env = {
   IDEMPOTENCY_TTL_HOURS: parseIntEnv('IDEMPOTENCY_TTL_HOURS', 24),
   LOG_LEVEL: requireEnv('LOG_LEVEL', 'info'),
   ASSET_STORAGE_PATH: requireEnv('ASSET_STORAGE_PATH', './storage'),
-  AGENT_TIMEOUT_MS: parseIntEnv('AGENT_TIMEOUT_MS', 12000),
-  CHAT_REQUEST_TIMEOUT_MS: parseIntEnv('CHAT_REQUEST_TIMEOUT_MS', 20000),
+
+  // LLM provider config
+  LLM_PROVIDER: requireEnv('LLM_PROVIDER', 'stub') as 'stub' | 'openai',
+  LLM_CALL_TIMEOUT_MS: parseIntEnv('LLM_CALL_TIMEOUT_MS', 12_000),
+  LLM_TOTAL_BUDGET_MS: parseIntEnv('LLM_TOTAL_BUDGET_MS', 18_000),
+  LLM_MAX_RETRIES: parseIntEnv('LLM_MAX_RETRIES', 1),
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
+  OPENAI_MODEL: requireEnv('OPENAI_MODEL', 'gpt-4o'),
+
+  // Agent/suggest config
+  SUGGEST_REQUEST_TIMEOUT_MS: parseIntEnv('SUGGEST_REQUEST_TIMEOUT_MS', 20_000),
+  SUGGEST_RATE_LIMIT: parseIntEnv('SUGGEST_RATE_LIMIT', 12),
+  AGENT_TIMEOUT_MS: parseIntEnv('AGENT_TIMEOUT_MS', 12_000),
+  CHAT_REQUEST_TIMEOUT_MS: parseIntEnv('CHAT_REQUEST_TIMEOUT_MS', 20_000),
 } as const;

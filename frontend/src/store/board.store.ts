@@ -1,5 +1,13 @@
 import { create } from 'zustand'
-import type { BoardStore, BoardNode, BoardEdge, BoardAsset, BatchMutationState, ChatMessage, ChatState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState } from './types'
+import type { BoardStore, BoardNode, BoardEdge, BoardAsset, BatchMutationState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState, ChatState, AgentState, ChatMessage, AgentSuggestion } from './types'
+
+const INITIAL_BATCH: BatchMutationState = {
+  status: 'idle',
+  affectedNodeIds: [],
+  snapshots: {},
+  edgeSnapshots: {},
+  error: null,
+}
 
 const INITIAL_CHAT: ChatState = {
   messages: [],
@@ -9,12 +17,12 @@ const INITIAL_CHAT: ChatState = {
   lastError: null,
 }
 
-const INITIAL_BATCH: BatchMutationState = {
-  status: 'idle',
-  affectedNodeIds: [],
-  snapshots: {},
-  edgeSnapshots: {},
-  error: null,
+const INITIAL_AGENT: AgentState = {
+  suggestStatus: 'idle',
+  latestSuggestion: null,
+  previewVisible: false,
+  previewStale: false,
+  suggestError: null,
 }
 
 const INITIAL_UI: UIState = {
@@ -38,8 +46,9 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   chatThread: null,
   pendingNodes: {},
   nodeMutationStatus: {},
-  chatState: INITIAL_CHAT,
   batchMutation: INITIAL_BATCH,
+  chatState: INITIAL_CHAT,
+  agentState: INITIAL_AGENT,
   ui: INITIAL_UI,
   sync: INITIAL_SYNC,
 
@@ -99,8 +108,9 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       chatThread: null,
       pendingNodes: {},
       nodeMutationStatus: {},
-      chatState: INITIAL_CHAT,
       batchMutation: INITIAL_BATCH,
+      chatState: INITIAL_CHAT,
+      agentState: INITIAL_AGENT,
       ui: INITIAL_UI,
       sync: INITIAL_SYNC,
     }),
@@ -570,4 +580,96 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       edgesById: { ...state.edgesById, [snapshot.edge.id]: snapshot.edge },
       edgeOrder: [...state.edgeOrder, snapshot.edge.id],
     })),
+
+  // ─── Chat Actions ─────────────────────────────────────────────────────────
+
+  loadChatHistory: (messages: ChatMessage[]) =>
+    set((state) => ({
+      chatState: { ...state.chatState, messages, loadStatus: 'ready' },
+    })),
+
+  setChatLoadStatus: (status) =>
+    set((state) => ({
+      chatState: { ...state.chatState, loadStatus: status },
+    })),
+
+  appendChatMessage: (message: ChatMessage) =>
+    set((state) => ({
+      chatState: { ...state.chatState, messages: [...state.chatState.messages, message] },
+    })),
+
+  appendChatMessages: (messages: ChatMessage[]) =>
+    set((state) => ({
+      chatState: { ...state.chatState, messages: [...state.chatState.messages, ...messages] },
+    })),
+
+  setChatSendStatus: (status) =>
+    set((state) => ({
+      chatState: { ...state.chatState, sendStatus: status },
+    })),
+
+  setChatDraftText: (text: string) =>
+    set((state) => ({
+      chatState: { ...state.chatState, draftText: text },
+    })),
+
+  setChatLastError: (error: string | null) =>
+    set((state) => ({
+      chatState: { ...state.chatState, lastError: error },
+    })),
+
+  // ─── Agent Actions ────────────────────────────────────────────────────────
+
+  setSuggestStatus: (status) =>
+    set((state) => ({
+      agentState: { ...state.agentState, suggestStatus: status },
+    })),
+
+  setLatestSuggestion: (suggestion: AgentSuggestion) =>
+    set((state) => ({
+      agentState: {
+        ...state.agentState,
+        latestSuggestion: suggestion,
+        previewVisible: true,
+        previewStale: false,
+        suggestStatus: 'idle',
+        suggestError: null,
+      },
+    })),
+
+  clearSuggestion: () =>
+    set((state) => ({
+      agentState: {
+        ...state.agentState,
+        latestSuggestion: null,
+        previewVisible: false,
+        previewStale: false,
+      },
+    })),
+
+  setSuggestError: (error) =>
+    set((state) => ({
+      agentState: { ...state.agentState, suggestError: error, suggestStatus: error ? 'error' : 'idle' },
+    })),
+
+  setPreviewStale: (stale: boolean) =>
+    set((state) => ({
+      agentState: { ...state.agentState, previewStale: stale },
+    })),
 }))
+
+// T039: Stale detection — watch for board revision changes
+let _lastRevision: number | undefined
+useBoardStore.subscribe((state) => {
+  const newRevision = state.board?.revision
+  if (newRevision !== undefined && _lastRevision !== undefined && newRevision !== _lastRevision) {
+    if (
+      state.agentState.latestSuggestion &&
+      state.agentState.latestSuggestion.boardRevision < newRevision &&
+      !state.agentState.previewStale
+    ) {
+      useBoardStore.getState().setPreviewStale(true)
+    }
+  }
+  _lastRevision = newRevision
+})

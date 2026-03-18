@@ -12,6 +12,8 @@ import { PreviewEdge } from './edges/PreviewEdge'
 import { ConnectionHandle } from './edges/ConnectionHandle'
 import { EdgeLabelEditor } from './edges/EdgeLabelEditor'
 import { CanvasToolbar } from './CanvasToolbar'
+import { PreviewOverlay } from './PreviewOverlay'
+import { StaleBanner } from './StaleBanner'
 import { DropZone } from '../upload/DropZone'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { UndoToast } from '../shared/UndoToast'
@@ -45,7 +47,7 @@ export function Canvas() {
     onError: (message) => setEdgeError(message),
   })
 
-  const { startUpload: dropUpload } = useImageUpload()
+  const { startUpload: imageUpload } = useImageUpload()
   const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null)
 
   const handleEdgeConnect = useCallback(
@@ -213,12 +215,59 @@ export function Canvas() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedNodeIds, selectedEdgeId, isActive, deleteNodeWithUndo, deleteEdgeMutation, batchCreateNodes, batchDeleteNodes, setSelectedNodeIds, setSelectedEdgeId])
 
+  // Paste image from clipboard → create image node on board
+  useEffect(() => {
+    function handlePaste(e: ClipboardEvent) {
+      if (!isActive) return
+
+      // Don't intercept if pasting into a text input
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
+
+      const clipboardData = e.clipboardData
+      if (!clipboardData) return
+
+      let imageFile: File | null = null
+      if (clipboardData.items) {
+        for (let i = 0; i < clipboardData.items.length; i++) {
+          const item = clipboardData.items[i]
+          if (item.type.startsWith('image/')) {
+            imageFile = item.getAsFile()
+            if (imageFile) break
+          }
+        }
+      }
+      if (!imageFile && clipboardData.files.length > 0) {
+        for (let i = 0; i < clipboardData.files.length; i++) {
+          if (clipboardData.files[i].type.startsWith('image/')) {
+            imageFile = clipboardData.files[i]
+            break
+          }
+        }
+      }
+
+      if (!imageFile) return
+      e.preventDefault()
+
+      // Place at center of visible viewport
+      const container = containerRef.current
+      const cx = container ? container.clientWidth / 2 - panOffset.x : 200
+      const cy = container ? container.clientHeight / 2 - panOffset.y : 200
+      imageUpload(imageFile, cx, cy)
+    }
+
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [isActive, panOffset, imageUpload])
+
   return (
     <div
       ref={containerRef}
       className="flex-1 overflow-hidden relative min-h-0 select-none"
       style={{
-        cursor: placementMode ? 'crosshair' : connectionDrag ? 'crosshair' : isPanning ? 'grabbing' : 'default',
+        cursor: placementMode ? 'crosshair' : connectionDrag ? 'crosshair' : isPanning ? 'grabbing' : 'grab',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
         backgroundColor: '#f8f9fa',
         backgroundImage: 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
         backgroundSize: '24px 24px',
@@ -235,9 +284,10 @@ export function Canvas() {
       }}
     >
       <CanvasToolbar />
+      <StaleBanner />
 
       <DropZone
-        onFileDrop={(file, x, y) => dropUpload(file, x, y)}
+        onFileDrop={(file, x, y) => imageUpload(file, x, y)}
         panOffset={panOffset}
       />
 
@@ -318,6 +368,9 @@ export function Canvas() {
             </div>
           )
         })}
+
+        {/* Agent preview overlay */}
+        <PreviewOverlay />
 
         {/* Edge label editor */}
         {editingEdgeId && (() => {

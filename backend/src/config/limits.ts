@@ -35,4 +35,23 @@ export const limits = {
     thumbnailMaxDim: 400,
     captionMaxLength: 2_000,
   },
+  agent: {
+    promptText: { min: 1, max: 20_000 },
+    maxActionItems: 200,
+    maxSelectedNodes: 50,
+    maxNearbyNodes: 100,
+    maxVisibleNodes: 200,
+    maxEdges: 200,
+    maxTokensTotal: 8_000,
+    maxTokensContent: 6_000,
+    nearbyRadiusPx: 800,
+    selectionMaxNodeIds: 100,
+    selectionMaxEdgeIds: 100,
+  },
+  chat: {
+    messageText: { min: 1, max: 20_000 },
+    messagesPerLoad: 200,
+    selectionMaxNodeIds: 100,
+    selectionMaxEdgeIds: 100,
+  },
 } as const;

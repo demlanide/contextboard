@@ -115,11 +115,12 @@ export interface BoardAsset {
   updatedAt: string
 }
 
+// ─── Chat Types ──────────────────────────────────────────────────────────────────────────────
 export interface ChatMessage {
   id: string
   threadId: string
   senderType: 'user' | 'agent' | 'system'
-  messageText: string | null
+  messageText: string
   messageJson: Record<string, unknown>
   selectionContext: Record<string, unknown>
   createdAt: string
@@ -131,6 +132,106 @@ export interface ChatState {
   loadStatus: 'idle' | 'loading' | 'ready' | 'error'
   draftText: string
   lastError: string | null
+}
+
+// ─── Agent / Suggest Types ──────────────────────────────────────────────────────────────────────
+
+export type ActionPlanItem =
+  | ActionPlanCreateNode
+  | ActionPlanUpdateNode
+  | ActionPlanDeleteNode
+  | ActionPlanCreateEdge
+  | ActionPlanUpdateEdge
+  | ActionPlanDeleteEdge
+  | ActionPlanBatchLayout
+
+export interface ActionPlanCreateNode {
+  type: 'create_node'
+  tempId: string
+  node: {
+    type: 'sticky' | 'text' | 'image' | 'shape'
+    x: number
+    y: number
+    width: number
+    height: number
+    content: { text: string }
+    style: Record<string, unknown>
+    metadata: { aiGenerated: true }
+  }
+}
+
+export interface ActionPlanUpdateNode {
+  type: 'update_node'
+  nodeId: string
+  patch: {
+    x?: number
+    y?: number
+    width?: number
+    height?: number
+    content?: { text?: string }
+    style?: Record<string, unknown>
+  }
+}
+
+export interface ActionPlanDeleteNode {
+  type: 'delete_node'
+  nodeId: string
+}
+
+export interface ActionPlanCreateEdge {
+  type: 'create_edge'
+  tempId: string
+  edge: {
+    sourceNodeId: string
+    targetNodeId: string
+    label?: string
+    edgeType?: string
+  }
+}
+
+export interface ActionPlanUpdateEdge {
+  type: 'update_edge'
+  edgeId: string
+  patch: {
+    label?: string
+    edgeType?: string
+  }
+}
+
+export interface ActionPlanDeleteEdge {
+  type: 'delete_edge'
+  edgeId: string
+}
+
+export interface ActionPlanBatchLayout {
+  type: 'batch_layout'
+  items: Array<{
+    nodeId: string
+    x: number
+    y: number
+  }>
+}
+
+export interface PreviewPayload {
+  affectedNodeIds: string[]
+  affectedEdgeIds: string[]
+  newNodeTempIds: string[]
+  newEdgeTempIds: string[]
+}
+
+export interface AgentSuggestion {
+  message: ChatMessage
+  actionPlan: ActionPlanItem[]
+  preview: PreviewPayload
+  boardRevision: number
+}
+
+export interface AgentState {
+  suggestStatus: 'idle' | 'running' | 'error'
+  latestSuggestion: AgentSuggestion | null
+  previewVisible: boolean
+  previewStale: boolean
+  suggestError: SyncError | null
 }
 
 export interface BoardListItem {
@@ -162,6 +263,7 @@ export interface BoardStore {
   nodeMutationStatus: Record<string, 'pending' | 'confirmed' | 'failed'>
   batchMutation: BatchMutationState
   chatState: ChatState
+  agentState: AgentState
   ui: UIState
   sync: SyncState
 
@@ -233,6 +335,22 @@ export interface BoardStore {
   removeEdgeOptimistic: (edgeId: string) => { edge: BoardEdge } | null
   confirmEdgeDelete: (edgeId: string, boardRevision: number) => void
   undoEdgeDelete: (snapshot: { edge: BoardEdge }) => void
+
+  // Chat actions
+  loadChatHistory: (messages: ChatMessage[]) => void
+  setChatLoadStatus: (status: ChatState['loadStatus']) => void
+  appendChatMessage: (message: ChatMessage) => void
+  appendChatMessages: (messages: ChatMessage[]) => void
+  setChatSendStatus: (status: ChatState['sendStatus']) => void
+  setChatDraftText: (text: string) => void
+  setChatLastError: (error: string | null) => void
+
+  // Agent actions
+  setSuggestStatus: (status: AgentState['suggestStatus']) => void
+  setLatestSuggestion: (suggestion: AgentSuggestion) => void
+  clearSuggestion: () => void
+  setSuggestError: (error: SyncError | null) => void
+  setPreviewStale: (stale: boolean) => void
 }
 
 export interface HydrateBoardData {

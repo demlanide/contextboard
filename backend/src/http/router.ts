@@ -20,6 +20,10 @@ import {
   handleUpdateEdge,
   handleDeleteEdge,
 } from './controllers/edges.controller.js';
+import { handleGetChat, handleSendMessage } from './controllers/chat.controller.js';
+import { suggestHandler } from './controllers/agent.controller.js';
+import { rateLimit } from './middleware/rate-limit.js';
+import { env } from '../config/env.js';
 import {
   handleUploadAsset,
   handleGetAssetMetadata,
@@ -39,6 +43,13 @@ router.post('/boards', idempotencyMiddleware('create_board'), handleCreateBoard)
 
 // US2: List Boards
 router.get('/boards', handleListBoards);
+
+// S10: Agent suggest
+router.post('/boards/:boardId/agent/actions', rateLimit(env.SUGGEST_RATE_LIMIT), suggestHandler);
+
+// S9: Chat
+router.get('/boards/:boardId/chat', handleGetChat);
+router.post('/boards/:boardId/chat/messages', handleSendMessage);
 
 // S2: Get Board State (hydration)
 router.get('/boards/:boardId/state', handleGetBoardState);

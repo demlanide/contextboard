@@ -71,7 +71,11 @@ export function errorHandler(
   }
 
   if (err instanceof ChatError) {
-    return res.status(422).json(errorResponse(err.code, err.message));
+    const statusMap: Record<string, number> = {
+      BOARD_ARCHIVED: 409,
+    };
+    const status = statusMap[err.code] ?? 422;
+    return res.status(status).json(errorResponse(err.code, err.message));
   }
 
   // Board errors
