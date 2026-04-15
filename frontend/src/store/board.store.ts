@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { BoardStore, BoardNode, BoardEdge, BoardAsset, BatchMutationState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState, ChatState, AgentState, ChatMessage, AgentSuggestion, ApplyResponse } from './types'
+import type { BoardStore, BoardNode, BoardEdge, BoardAsset, BatchMutationState, ConnectionDragState, HydrateBoardData, SyncError, SyncState, UIState, ChatState, AgentState, ChatMessage, AgentSuggestion, ApplyResponse, OperationRecord } from './types'
 
 const INITIAL_BATCH: BatchMutationState = {
   status: 'idle',
@@ -35,7 +35,14 @@ const INITIAL_UI: UIState = {
   selectedEdgeId: null,
   connectionDrag: null,
 }
-const INITIAL_SYNC: SyncState = { hydrateStatus: 'idle', lastSyncedRevision: null, lastError: null }
+const INITIAL_SYNC: SyncState = {
+  hydrateStatus: 'idle',
+  lastSyncedRevision: null,
+  lastError: null,
+  pollingCursor: null,
+  pollingStatus: 'idle',
+  stale: false,
+}
 
 export const useBoardStore = create<BoardStore>((set, get) => ({
   boardId: null,
@@ -89,6 +96,9 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
         hydrateStatus: 'ready',
         lastSyncedRevision: data.board.revision,
         lastError: null,
+        pollingCursor: data.board.revision,
+        pollingStatus: 'idle',
+        stale: false,
       },
     })
   },
@@ -675,6 +685,128 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     set((state) => ({
       agentState: { ...state.agentState, applyStatus: 'idle', applyError: null },
     })),
+
+  // ─── Polling Actions (S12) ───────────────────────────────────────────────────
+
+  setPollingCursor: (revision: number) =>
+    set((state) => ({ sync: { ...state.sync, pollingCursor: revision } })),
+
+  setPollingStatus: (status) =>
+    set((state) => ({ sync: { ...state.sync, pollingStatus: status } })),
+
+  markStale: () =>
+    set((state) => ({ sync: { ...state.sync, stale: true } })),
+
+  clearStale: () =>
+    set((state) => ({ sync: { ...state.sync, stale: false } })),
+
+  applyPolledOperation: (op: OperationRecord) =>
+    set((state) => {
+      const payload = op.payload as Record<string, unknown>
+      switch (op.operationType) {
+        case 'create_node': {
+          const node = payload as unknown as BoardNode
+          if (!node?.id) return state
+          return {
+            nodesById: { ...state.nodesById, [node.id]: node },
+            nodeOrder: state.nodeOrder.includes(node.id)
+              ? state.nodeOrder
+              : [...state.nodeOrder, node.id],
+            board: state.board ? { ...state.board, revision: op.boardRevision } : null,
+            sync: { ...state.sync, lastSyncedRevision: op.boardRevision },
+          }
+        }
+        case 'update_node': {
+          const nodeId = op.targetId
+          if (!nodeId || !state.nodesById[nodeId]) {
+            // Best-effort: if payload has enough data reconstruct; otherwise skip
+            const node = payload as unknown as BoardNode
+            if (!node?.id) return state
+            return {
+              nodesById: { ...state.nodesById, [node.id]: node },
+              nodeOrder: state.nodeOrder.includes(node.id)
+                ? state.nodeOrder
+                : [...state.nodeOrder, node.id],
+              board: state.board ? { ...state.board, revision: op.boardRevision } : null,
+              sync: { ...state.sync, lastSyncedRevision: op.boardRevision },
+            }
+          }
+          return {
+            nodesById: { ...state.nodesById, [nodeId]: { ...state.nodesById[nodeId], ...payload } as BoardNode },
+            board: state.board ? { ...state.board, revision: op.boardRevision } : null,
+            sync: { ...state.sync, lastSyncedRevision: op.boardRevision },
+          }
+        }
+        case 'delete_node': {
+          const nodeId = op.targetId
+          if (!nodeId) return state
+          const { [nodeId]: _, ...remainingNodes } = state.nodesById
+          return {
+            nodesById: remainingNodes,
+            nodeOrder: state.nodeOrder.filter((id) => id !== nodeId),
+            board: state.board ? { ...state.board, revision: op.boardRevision } : null,
+            sync: { ...state.sync, lastSyncedRevision: op.boardRevision },
+          }
+        }
+        case 'create_edge': {
+          const edge = payload as unknown as BoardEdge
+          if (!edge?.id) return state
+          return {
+            edgesById: { ...state.edgesById, [edge.id]: edge },
+            edgeOrder: state.edgeOrder.includes(edge.id)
+              ? state.edgeOrder
+              : [...state.edgeOrder, edge.id],
+            board: state.board ? { ...state.board, revision: op.boardRevision } : null,
+            sync: { ...state.sync, lastSyncedRevision: op.boardRevision },
+          }
+        }
+        case 'update_edge': {
+          const edgeId = op.targetId
+          if (!edgeId) return state
+          if (!state.edgesById[edgeId]) {
+            const edge = payload as unknown as BoardEdge
+            if (!edge?.id) return state
+            return {
+              edgesById: { ...state.edgesById, [edge.id]: edge },
+              edgeOrder: state.edgeOrder.includes(edge.id)
+                ? state.edgeOrder
+                : [...state.edgeOrder, edge.id],
+              board: state.board ? { ...state.board, revision: op.boardRevision } : null,
+              sync: { ...state.sync, lastSyncedRevision: op.boardRevision },
+            }
+          }
+          return {
+            edgesById: { ...state.edgesById, [edgeId]: { ...state.edgesById[edgeId], ...payload } as BoardEdge },
+            board: state.board ? { ...state.board, revision: op.boardRevision } : null,
+            sync: { ...state.sync, lastSyncedRevision: op.boardRevision },
+          }
+        }
+        case 'delete_edge': {
+          const edgeId = op.targetId
+          if (!edgeId) return state
+          const { [edgeId]: __, ...remainingEdges } = state.edgesById
+          return {
+            edgesById: remainingEdges,
+            edgeOrder: state.edgeOrder.filter((id) => id !== edgeId),
+            board: state.board ? { ...state.board, revision: op.boardRevision } : null,
+            sync: { ...state.sync, lastSyncedRevision: op.boardRevision },
+          }
+        }
+        case 'update_board': {
+          if (!state.board) return state
+          return {
+            board: { ...state.board, ...(payload as Partial<typeof state.board>), revision: op.boardRevision },
+            sync: { ...state.sync, lastSyncedRevision: op.boardRevision },
+          }
+        }
+        default:
+          // Unknown type or apply_agent_action_batch: advance revision only, log handled by poller
+          return {
+            board: state.board ? { ...state.board, revision: op.boardRevision } : null,
+            sync: { ...state.sync, lastSyncedRevision: op.boardRevision },
+          }
+      }
+    }),
 
   reconcileApply: (response: ApplyResponse) =>
     set((state) => {

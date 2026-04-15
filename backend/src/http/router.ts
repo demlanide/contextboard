@@ -22,6 +22,7 @@ import {
 } from './controllers/edges.controller.js';
 import { handleGetChat, handleSendMessage } from './controllers/chat.controller.js';
 import { suggestHandler, applyHandler } from './controllers/agent.controller.js';
+import { handleGetBoardOperations } from './controllers/operations.controller.js';
 import { rateLimit } from './middleware/rate-limit.js';
 import { env } from '../config/env.js';
 import {
@@ -52,6 +53,9 @@ router.post('/boards/:boardId/chat/messages', handleSendMessage);
 
 // S2: Get Board State (hydration)
 router.get('/boards/:boardId/state', handleGetBoardState);
+
+// S12: Operations polling
+router.get('/boards/:boardId/operations', rateLimit(120), handleGetBoardOperations);
 
 // US3: Get Board
 router.get('/boards/:boardId', handleGetBoard);

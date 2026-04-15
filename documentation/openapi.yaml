@@ -508,9 +508,16 @@ paths:
         - name: afterRevision
           in: query
           required: false
+          description: >
+            Returns only operations with boardRevision strictly greater than this value.
+            When omitted, defaults to 0 (returns all committed operations from the start of
+            board history), subject to the limit cap. In normal client usage this is always
+            provided (initialized from board-state hydration); the default-to-0 behavior
+            exists for debugging and audit tooling only.
           schema:
             type: integer
             minimum: 0
+            default: 0
         - name: limit
           in: query
           required: false
@@ -526,8 +533,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GetOperationsResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
         '404':
           $ref: '#/components/responses/BoardNotFound'
+        '410':
+          description: Cursor no longer valid — full board-state rehydrate required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                data: null
+                error:
+                  code: CURSOR_INVALID
+                  message: "afterRevision is outside the safe polling window; perform a full board-state rehydrate"
+                  details:
+                    minSafeRevision: 0
 
 components:
   parameters:
@@ -1842,7 +1864,7 @@ components:
           properties:
             data:
               type: object
-              required: [operations, nextCursor]
+              required: [operations, nextCursor, headRevision]
               properties:
                 operations:
                   type: array
@@ -1851,3 +1873,7 @@ components:
                 nextCursor:
                   type: string
                   nullable: true
+                  description: String representation of the last returned operation's boardRevision, or null when no operations were returned or the last page was reached. Use as the next afterRevision value.
+                headRevision:
+                  type: integer
+                  description: Current confirmed board revision at the time this response was generated. If headRevision > afterRevision and operations is empty, treat as a consistency gap and rehydrate.
