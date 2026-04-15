@@ -4,7 +4,7 @@ import { getChatHistory, sendMessage as sendMessageApi } from '@/api/chat.api'
 import type { ChatMessage } from '@/store/types'
 import type { SelectionContext } from '@/api/chat.api'
 
-export function useChat() {
+export function useChat(boardId: string | null | undefined) {
   const messages = useBoardStore((s) => s.chatState.messages)
   const sendStatus = useBoardStore((s) => s.chatState.sendStatus)
   const loadStatus = useBoardStore((s) => s.chatState.loadStatus)
@@ -17,7 +17,9 @@ export function useChat() {
   const setChatLastError = useBoardStore((s) => s.setChatLastError)
 
   const loadHistory = useCallback(
-    async (boardId: string) => {
+    async () => {
+      if (!boardId) return
+
       // Skip if already loaded
       const current = useBoardStore.getState().chatState
       if (current.loadStatus === 'ready' && current.messages.length > 0) return
@@ -35,11 +37,12 @@ export function useChat() {
         loadChatHistory(result.data.messages as ChatMessage[])
       }
     },
-    [setChatLoadStatus, setChatLastError, loadChatHistory],
+    [boardId, setChatLoadStatus, setChatLastError, loadChatHistory],
   )
 
   const sendMessageAction = useCallback(
-    async (boardId: string, text: string) => {
+    async (text: string) => {
+      if (!boardId) return
       setChatSendStatus('sending')
       setChatLastError(null)
 
@@ -59,7 +62,7 @@ export function useChat() {
         }
       }
 
-      const result = await sendMessageApi(boardId, text, selectionContext)
+      const result = await sendMessageApi(boardId!, text, selectionContext)
 
       if (result.error && !result.data) {
         setChatSendStatus('error')
@@ -85,7 +88,7 @@ export function useChat() {
         }
       }
     },
-    [setChatSendStatus, setChatLastError, appendChatMessages],
+    [boardId, setChatSendStatus, setChatLastError, appendChatMessages],
   )
 
   return {

@@ -222,3 +222,21 @@ export async function getAssetThumbnail(
     throw new AssetError('INTERNAL_ERROR', 'Thumbnail blob not found in storage');
   }
 }
+
+// ─── Get Thumbnail as Base64 (for LLM context) ───────────────────────────────
+
+export async function getThumbnailBase64(assetId: string): Promise<string | null> {
+  try {
+    const storage = getStorage();
+    const metadata = await withTransaction(async (client) => findById(client, assetId));
+    if (!metadata?.thumbnail_storage_key) return null;
+    const { stream } = await storage.getObjectStream(metadata.thumbnail_storage_key);
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array));
+    }
+    return `data:image/webp;base64,${Buffer.concat(chunks).toString('base64')}`;
+  } catch {
+    return null;
+  }
+}

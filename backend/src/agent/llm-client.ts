@@ -2,18 +2,7 @@
 import { env } from '../config/env.js';
 import type { AgentContextSnapshot, LLMRawResponse } from './types.js';
 import { logger } from '../obs/logger.js';
-
-async function loadThumbnailBase64(assetId: string): Promise<string | null> {
-  try {
-    // Fetch thumbnail from our own API (simpler than reaching into storage directly)
-    const response = await fetch(`http://localhost:${env.PORT}/api/assets/${assetId}/thumbnail`);
-    if (!response.ok) return null;
-    const buffer = Buffer.from(await response.arrayBuffer());
-    return `data:image/webp;base64,${buffer.toString('base64')}`;
-  } catch {
-    return null;
-  }
-}
+import { getThumbnailBase64 } from '../services/assets.service.js';
 
 interface CallLLMOptions {
   timeoutMs?: number;
@@ -54,7 +43,7 @@ async function buildUserContent(
     .filter((a) => a.thumbnailUrl && a.processingStatus === 'ready')
     .slice(0, 8) // cap at 8 board images
     .map(async (a) => {
-      const base64 = await loadThumbnailBase64(a.id);
+      const base64 = await getThumbnailBase64(a.id);
       return base64 ? { nodeId: a.nodeId, base64 } : null;
     });
 
@@ -70,7 +59,7 @@ async function buildUserContent(
   // Add board image thumbnails
   for (const thumb of thumbnails) {
     parts.push({ type: 'text', text: `[Image from board node ${thumb.nodeId}]:` });
-    parts.push({ type: 'image_url', image_url: { url: thumb.base64, detail: 'low' } });
+    parts.push({ type: 'image_url', image_url: { url: thumb.base64, detail: 'auto' } });
   }
 
   // Add user-pasted images
@@ -106,7 +95,7 @@ async function callOpenAI(
             role: 'system',
             content: `You are a helpful AI assistant for a visual board application. Users place sticky notes, text, images, and shapes on a canvas and connect them with edges.
 
-You can see the board's content including node positions, text, and any images the user has added. Answer questions naturally — about the board content, the images, general knowledge, or anything else the user asks.
+You can see the board's content including node positions, text, and any images the user has added. When images are present, describe what you see in them in full detail — objects, scenes, landmarks, cities, architecture, artwork, text, people, animals, or any other content. Identifying and describing image content is a core feature of this application. Answer questions naturally — about the board content, the images, general knowledge, or anything else the user asks.
 
 When appropriate, you can also suggest board modifications by including them in your actionPlan.
 
