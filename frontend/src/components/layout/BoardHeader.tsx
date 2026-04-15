@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { useBoardStore } from '@/store/board.store'
+import { SyncIndicator } from '@/components/SyncIndicator/SyncIndicator'
 
 export function BoardHeader() {
   const board = useBoardStore((s) => s.board)
@@ -17,6 +18,9 @@ export function BoardHeader() {
           Archived
         </span>
       )}
+      <div className="ml-auto">
+        <SyncIndicator />
+      </div>
     </header>
   )
 }

@@ -1,6 +1,6 @@
 # contextboard Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-03-17
+Auto-generated from all feature plans. Last updated: 2026-04-14
 
 ## Active Technologies
 - TypeScript 5.7+ (Node.js LTS for backend, browser for frontend) + Express (HTTP), Zod (schema validation), node-postgres (pg) for backend; React 19, React Router 7, Zustand, Vite for frontend (005-node-crud)
@@ -12,6 +12,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-17
 - PostgreSQL 15+ (reads existing boards/nodes/edges/assets/chat tables; writes chat_messages only); Zustand store (frontend agent/preview state) (010-agent-suggest-non-durable-ai-suggestion-flow-with-context-building-action-plan-validation-preview-payload-prompt-entry-ux-and-preview-ui)
 - TypeScript 5.7+ (Node.js LTS backend, React 19 frontend) + Express HTTP API, Zod validation, node-postgres (pg), React Router, Zustand (011-agent-apply)
 - PostgreSQL 15+ as sole durable store for boards, nodes, edges, operations, chat, and agent artifacts (011-agent-apply)
+- TypeScript 5.7+ (Node.js LTS for backend, browser for frontend) + Express (HTTP routing), Zod (request validation), node-postgres (`pg`) for backend; React 19, Zustand, React Router 7, Vite for frontend (012-operations-polling)
+- PostgreSQL 15+ — reads from existing `board_operations` and `boards` tables; no new tables or migrations required (012-operations-polling)
 
 - TypeScript 5.7+ (matching backend) + React 19, React Router 7, Zustand (state management), Vite (bundler/dev server) (004-create-the-next-feature-spec-for-context-board-mvp-004-frontend-foundation-frontend-app-bootstrap-routing-api-client-board-create-open-flow-hydration-integration-loading-empty-error-states-canvas-and-chat-placeholders-lint-test-baseline)
 
@@ -32,10 +34,9 @@ npm test; npm run lint
 TypeScript 5.7+ (matching backend): Follow standard conventions
 
 ## Recent Changes
+- 012-operations-polling: Added TypeScript 5.7+ (Node.js LTS for backend, browser for frontend) + Express (HTTP routing), Zod (request validation), node-postgres (`pg`) for backend; React 19, Zustand, React Router 7, Vite for frontend
 - 010-agent-suggest-non-durable-ai-suggestion-flow-with-context-building-action-plan-validation-preview-payload-prompt-entry-ux-and-preview-ui: Added TypeScript 5.7+ (Node.js LTS for backend, browser for frontend) + Express (HTTP), Zod (schema validation), node-postgres (pg) for backend; React 19, React Router 7, Zustand, Vite for frontend; OpenAI SDK or fetch-based LLM client (stubbable)
 - 011-agent-apply: Added TypeScript 5.7+ (Node.js LTS backend, React 19 frontend) + Express HTTP API, Zod validation, node-postgres (pg), React Router, Zustand
-- 009-chat-persistence-board-scoped-durable-chat-thread-with-message-history-selection-context-and-chat-panel-ui: Added TypeScript 5.7+ (Node.js LTS for backend, browser for frontend) + Express (HTTP), Zod (schema validation), node-postgres (pg) for backend; React 19, React Router 7, Zustand, Vite for frontend
-- 008-assets-image-nodes: Added TypeScript 5.7+ (Node.js LTS for backend, browser for frontend) + Express (HTTP), Zod (schema validation), node-postgres (pg), multer (multipart), sharp (image processing/thumbnails) for backend; React 19, React Router 7, Zustand, Vite for frontend
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -88,6 +88,9 @@ export interface SyncState {
   hydrateStatus: 'idle' | 'loading' | 'ready' | 'error'
   lastSyncedRevision: number | null
   lastError: SyncError | null
+  pollingCursor: number | null
+  pollingStatus: 'idle' | 'polling' | 'error'
+  stale: boolean
 }
 
 export interface SyncError {
@@ -373,6 +376,27 @@ export interface BoardStore {
   setApplyError: (error: SyncError | null) => void
   clearApplyState: () => void
   reconcileApply: (response: ApplyResponse) => void
+
+  // Polling actions (S12)
+  setPollingCursor: (revision: number) => void
+  setPollingStatus: (status: SyncState['pollingStatus']) => void
+  markStale: () => void
+  clearStale: () => void
+  applyPolledOperation: (op: OperationRecord) => void
+}
+
+export interface OperationRecord {
+  id: string
+  boardId: string
+  boardRevision: number
+  actorType: 'user' | 'agent' | 'system'
+  operationType: string
+  targetType: string
+  targetId: string | null
+  batchId: string | null
+  payload: Record<string, unknown>
+  inversePayload: Record<string, unknown> | null
+  createdAt: string
 }
 
 export interface HydrateBoardData {

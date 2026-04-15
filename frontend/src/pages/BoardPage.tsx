@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useBoardHydration } from '@/hooks/useBoardHydration'
+import { useOperationsPoller } from '@/hooks/useOperationsPoller'
 import { useBoardStore } from '@/store/board.store'
 import { BoardHeader } from '@/components/layout/BoardHeader'
 import { BoardWorkspace } from '@/components/layout/BoardWorkspace'
@@ -8,9 +9,12 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
 
 export function BoardPage() {
-  const { sync, retry } = useBoardHydration()
+  const { boardId, sync, retry } = useBoardHydration()
   const reset = useBoardStore((s) => s.reset)
   const navigate = useNavigate()
+
+  // Start operations polling — poll() guards itself on pollingCursor (set after hydration) (S12)
+  useOperationsPoller(boardId ?? '')
 
   useEffect(() => {
     return () => {

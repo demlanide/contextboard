@@ -35,6 +35,11 @@ export const limits = {
     thumbnailMaxDim: 400,
     captionMaxLength: 2_000,
   },
+  polling: {
+    maxPageSize: parseInt(process.env.POLLING_MAX_PAGE_SIZE ?? '100', 10),
+    hardTimeoutMs: parseInt(process.env.POLLING_HARD_TIMEOUT_MS ?? '2000', 10),
+    minSafeRevision: parseInt(process.env.POLLING_MIN_SAFE_REVISION ?? '0', 10),
+  },
   agent: {
     promptText: { min: 1, max: 20_000 },
     maxActionItems: 200,

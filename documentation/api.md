@@ -1043,25 +1043,128 @@ For MVP:
 
 ## 16. Operations API
 
-### GET /api/boards/:boardId/operations?afterRevision=12&limit=100
-Read operations after a given revision.
+The Operations API enables incremental board sync. Clients poll this endpoint to receive committed mutations since their last known revision, apply them to local state, and advance their cursor — keeping the board in sync without a full page reload.
 
-Response:
+### GET /api/boards/:boardId/operations
+
+Query parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `afterRevision` | integer | `0` | Return operations with `boardRevision > afterRevision`. Defaults to 0 (return all). |
+| `limit` | integer | `100` | Max results per page. Capped server-side at 500. |
+
+Rate limit: 120 requests/minute.
+
+#### 200 — Operations returned
+
 ```json
 {
   "data": {
-    "operations": [],
-    "nextCursor": null
+    "operations": [
+      {
+        "id": "uuid",
+        "boardId": "uuid",
+        "boardRevision": 14,
+        "actorType": "user",
+        "operationType": "create_node",
+        "targetType": "node",
+        "targetId": "uuid",
+        "batchId": null,
+        "payload": { "id": "uuid", "type": "sticky", "x": 100, "y": 200 },
+        "inversePayload": null,
+        "createdAt": "2026-04-14T10:00:00Z"
+      }
+    ],
+    "nextCursor": "14",
+    "headRevision": 14
   },
   "error": null
 }
 ```
 
-Use cases:
-- debug
-- client polling
-- audit view
-- future sync improvements
+#### 200 — Caught up (no new operations)
+
+```json
+{
+  "data": {
+    "operations": [],
+    "nextCursor": null,
+    "headRevision": 14
+  },
+  "error": null
+}
+```
+
+#### 400 — Invalid query parameters
+
+```json
+{
+  "data": null,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "afterRevision must be a non-negative integer",
+    "details": { "field": "afterRevision" }
+  }
+}
+```
+
+#### 404 — Board not found
+
+```json
+{
+  "data": null,
+  "error": { "code": "BOARD_NOT_FOUND", "message": "Board not found" }
+}
+```
+
+#### 410 — Stale cursor
+
+Returned when `afterRevision` is below the server's minimum safe revision (purged history or initial bootstrap).
+
+```json
+{
+  "data": null,
+  "error": {
+    "code": "CURSOR_INVALID",
+    "message": "Cursor is below minimum safe revision",
+    "details": { "minSafeRevision": 50 }
+  }
+}
+```
+
+Clients receiving 410 must discard local state and rehydrate via `GET /api/boards/:boardId/state`.
+
+### headRevision semantics
+
+`headRevision` is the board's current committed revision at the time of the response. Clients use it to detect gaps:
+
+- If `operations` is empty and `headRevision > afterRevision`, a consistency gap has been detected — rehydrate.
+- If `operations` is non-empty, advance the local cursor to `operations[last].boardRevision`.
+
+### Pagination (nextCursor)
+
+`nextCursor` is a non-null string when more pages are available. Use it as `afterRevision` for the next call:
+
+```
+GET /operations?afterRevision=0&limit=100   → nextCursor: "100"
+GET /operations?afterRevision=100&limit=100 → nextCursor: "200"
+GET /operations?afterRevision=200&limit=100 → nextCursor: null  (done)
+```
+
+### Client polling behavior
+
+- Poll interval: 10 seconds when tab is active, 30 seconds when tab is backgrounded.
+- Pause polling while any durable mutation is in-flight (optimistic create/update/delete, batch, agent apply).
+- On 410: rehydrate via `GET /state`, resume polling from new revision.
+- On 3 consecutive network/5xx errors: surface sync-error state to the user.
+- On 404: stop polling (board was deleted).
+
+### Use cases
+- Incremental board sync after inactivity
+- Paginated catchup after large operation backlog
+- Stale-state detection and auto-recovery
+- Audit and debug
 
 ---
 
